@@ -1,6 +1,7 @@
 import React from 'react'
 import { t } from '../../../theme/tokens'
 import { useApp } from '../../../store/AppStore'
+import { useAuth } from '../../../auth/AuthContext'
 import { Card, Button, Ring, Stat, Badge, SectionHeader, ProgressBar } from '../../../components/ui/UI'
 import { BarChart } from '../../../components/charts/Charts'
 import { greeting, DAYS_SHORT_HE, todayKey } from '../../../utils/date'
@@ -9,12 +10,32 @@ import { DailyBoost } from '../../../components/notifications/DailyBoost'
 import { Kicker, SectionHead } from '../../../design/components/primitives'
 import { useI18n } from '../../../i18n/i18n'
 
+// Pretty-print an email prefix as a first name: strips digits, splits on
+// dots/underscores, and capitalizes. "avivgvili6" → "Avivgvili",
+// "aviv.gvili" → "Aviv". Only used when no proper name exists.
+function prettifyFromEmail(email) {
+  if (!email) return ''
+  const raw = String(email).split('@')[0]
+  const stripped = raw.replace(/[0-9]+$/, '')
+  const first = stripped.split(/[._-]/)[0]
+  if (!first) return ''
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+}
+
 export function Home({ go }) {
  const { state } = useApp()
+ const { user } = useAuth()
  const { isRTL } = useI18n()
  const { profile, moodCheckins, mealLogs, workoutLogs } = state
  const isFemale = profile.sex === 'female'
- const first = profile.name?.split(' ')[0] || (isRTL ? (isFemale ? 'אלופה' : 'אלוף') : 'Champion')
+ // Name-resolution chain: profile → auth user → email prefix → gender-tuned
+ // fallback ("אלוף/אלופה"). This keeps the greeting personal even for accounts
+ // (e.g. admins) that skipped the member onboarding and never wrote profile.name.
+ const first =
+   profile.name?.split(' ')[0] ||
+   user?.name?.split(' ')[0] ||
+   prettifyFromEmail(user?.email) ||
+   (isRTL ? (isFemale ? 'אלופה' : 'אלוף') : 'Champion')
  const readyWord = isRTL ? (isFemale ? 'מוכנה?' : 'מוכן?') : 'Ready?'
  const _bmr = bmr(profile)
  const _tdee = tdee(_bmr, profile.activity)
