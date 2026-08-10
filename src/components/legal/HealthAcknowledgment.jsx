@@ -20,7 +20,14 @@ const DOC_VERSION = 'v2.2026-08' // v2 bundles health + terms + privacy
 export function readHealthAck() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    // A record only counts as valid consent when it carries BOTH the
+    // typed signer name and the signature-pad image. Bare/stale entries
+    // (from old versions, aborted flows, or manual tampering) are treated
+    // as "not signed" so the gate forces the user through the real form.
+    if (!parsed?.signerName?.trim() || !parsed?.signatureDataUrl) return null
+    return parsed
   } catch { return null }
 }
 

@@ -5,6 +5,8 @@ import { I18nProvider } from './i18n/i18n'
 import { Shell } from './components/layout/Layout'
 import { FloatingAssistant } from './components/assistant/FloatingAssistant'
 import { NotificationScheduler } from './components/notifications/NotificationScheduler'
+import { TrainerCheckIn } from './components/notifications/TrainerCheckIn'
+import { NewWorkoutToast } from './components/notifications/NewWorkoutToast'
 import { LoginScreen } from './modules/auth/LoginScreen'
 import { Onboarding } from './modules/member/onboarding/Onboarding'
 
@@ -137,6 +139,8 @@ function AppRouter() {
  {pages[validPage]}
  </Shell>
  <NotificationScheduler />
+ {isMemberView && <TrainerCheckIn />}
+ {isMemberView && <NewWorkoutToast />}
  {!isAdminView && (
  <FloatingAssistant
    onOpenMentalCoach={() => setPage('mind')}

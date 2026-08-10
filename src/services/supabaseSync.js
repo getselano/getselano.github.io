@@ -195,7 +195,11 @@ export async function fetchHealthAck(userId) {
       .eq('id', userId)
       .maybeSingle()
     if (error) { console.warn('[supabaseSync] fetch health_ack:', error.message); return null }
-    return data?.health_ack || null
+    const record = data?.health_ack || null
+    // Same validation as readHealthAck — a record without a signer name +
+    // signature image doesn't count as consent, so the gate keeps blocking.
+    if (!record?.signerName?.trim() || !record?.signatureDataUrl) return null
+    return record
   } catch (err) {
     console.warn('[supabaseSync] fetch health_ack exception:', err?.message || err)
     return null
