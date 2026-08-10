@@ -105,7 +105,7 @@ function Today() {
  <WaterTracker />
 
  {recentMeals.length > 0 && (
- <Card style={{ background: `linear-gradient(135deg, ${t.color.bgCard} 0%, ${t.color.bgElevated} 100%)`, border: `1px solid ${t.color.gold}` }}>
+ <Card style={{ background: `linear-gradient(135deg, ${t.color.bgCard} 0%, ${t.color.bgElevated} 100%)`, border: `1px solid ${t.color.gold}`, overflow: 'hidden' }}>
  <SectionHeader
  title={isRTL ? '⭐ המרשמים שלי' : '⭐ My favorites'}
  subtitle={isRTL ? 'קליק אחד כדי להוסיף שוב' : 'One click to add again'}
