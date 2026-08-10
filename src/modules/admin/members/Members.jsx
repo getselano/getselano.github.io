@@ -226,38 +226,52 @@ export function Members() {
         </div>
       )}
 
-      {/* Top referrers */}
-      {!loading && topReferrers.length > 0 && (
+      {/* Top referrers — always visible so the admin sees the feature
+          exists even when no one has referred anyone yet */}
+      {!loading && (
         <div style={{
           background: `linear-gradient(160deg, rgba(199,64,80,0.08), ${t.color.panel} 70%)`,
           border: `1px solid rgba(199,64,80,0.35)`,
           borderRadius: t.radius.lg, padding: 16,
         }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom: 12 }}>
-            <Kicker color="wine">מובילי הזמנות</Kicker>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom: 12, flexWrap:'wrap', gap: 8 }}>
+            <Kicker color="wine">מובילי הפניות · Top Referrers</Kicker>
             <Label color={t.color.silver3}>מי הביא הכי הרבה חברים</Label>
           </div>
-          <div style={{ display:'flex', gap: 10, flexWrap:'wrap' }}>
-            {topReferrers.map((r, i) => (
-              <div key={r.id} style={{
-                display:'flex', alignItems:'center', gap: 8,
-                padding:'8px 14px',
-                background: t.color.bgSoft,
-                border: `1px solid ${i === 0 ? t.color.wineLight : t.color.border}`,
-                borderRadius: t.radius.pill,
-              }}>
-                <span style={{
-                  fontFamily: t.font.family.mono, fontSize: 10,
-                  color: i === 0 ? t.color.wineLight : t.color.silver3, fontWeight: 700,
-                }}>#{i + 1}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: t.color.white }}>{r.name}</span>
-                <span style={{
-                  padding:'2px 8px', background: t.color.wineLight, color: t.color.white,
-                  borderRadius: 999, fontFamily: t.font.family.mono, fontSize: 11, fontWeight: 700,
-                }}>{r.count}</span>
-              </div>
-            ))}
-          </div>
+          {topReferrers.length > 0 ? (
+            <div style={{ display:'flex', gap: 10, flexWrap:'wrap' }}>
+              {topReferrers.map((r, i) => (
+                <div key={r.id} style={{
+                  display:'flex', alignItems:'center', gap: 8,
+                  padding:'8px 14px',
+                  background: t.color.bgSoft,
+                  border: `1px solid ${i === 0 ? t.color.wineLight : t.color.border}`,
+                  borderRadius: t.radius.pill,
+                }}>
+                  <span style={{
+                    fontFamily: t.font.family.mono, fontSize: 10,
+                    color: i === 0 ? t.color.wineLight : t.color.silver3, fontWeight: 700,
+                  }}>#{i + 1}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: t.color.white }}>{r.name}</span>
+                  <span style={{
+                    padding:'2px 8px', background: t.color.wineLight, color: t.color.white,
+                    borderRadius: 999, fontFamily: t.font.family.mono, fontSize: 11, fontWeight: 700,
+                  }}>{r.count}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              padding: '12px 4px',
+              color: t.color.silver2, fontSize: t.font.sm, lineHeight: 1.55,
+            }}>
+              עדיין אף מתאמן לא הזמין חבר.
+              <br />
+              <span style={{ color: t.color.silver3, fontSize: 12 }}>
+                כל מתאמן יכול לשתף קישור מהפרופיל שלו (כפתור "שתף חבר"). כשמישהו נכנס דרך הקישור ונרשם — הוא מסומן כמופנה, ומי שהזמין יופיע כאן.
+              </span>
+            </div>
+          )}
         </div>
       )}
 
