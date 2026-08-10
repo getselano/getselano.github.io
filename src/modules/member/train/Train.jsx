@@ -406,7 +406,9 @@ function WeeklySchedule({ plan, onOpenSession }) {
 function DayRow({ day, plan, onOpen }) {
  const isWorkout = day.type === 'workout'
  const s = day.session
-
+ // Legacy programs (from data/programs.js) expose exercises as `blocks`;
+ // adopted plans expose them as `exercises`. Normalize here.
+ const rowExercises = s?.exercises?.length ? s.exercises : (s?.blocks || [])
  return (
  <div style={{
  display:'grid', gridTemplateColumns:'auto 1fr auto', gap: 12, alignItems:'stretch',
@@ -435,12 +437,12 @@ function DayRow({ day, plan, onOpen }) {
  <div style={{ display:'flex', gap: 8, alignItems:'center', flexWrap:'wrap'}}>
  <div style={{ fontWeight: 800, fontSize: t.font.md }}>{s.name}</div>
  {s.wodType && <Badge color={t.color.danger}>{s.wodType}</Badge>}
- {s.exercises.some(e => e.supersetWith) && <Badge color={t.color.info}> סופרסט</Badge>}
- {s.exercises.some(e => e.dropSetOnLast) && <Badge color={t.color.danger}> דרופסט</Badge>}
- {s.exercises.some(e => e.amrap) && <Badge color={t.color.warning}> AMRAP</Badge>}
+{rowExercises.some(e => e.supersetWith) && ...
+ {s.exercises.some(e => e.dropSetOnLast) && ...
+ {s.exercises.some(e => e.amrap) && ...
  </div>
  <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>
- {s.exercises.length} תרגילים · לחץ להתחלה
+{rowExercises.length} תרגילים · לחץ להתחלה
  </div>
  </>
  ) : (
@@ -1172,7 +1174,17 @@ function ProgramModal({ open, onClose, program, onAdopt, oneRMs }) {
 
 function buildInitialLog(session, priorLogs) {
  if (!session) return []
- return session.exercises.map(e => {
+  const source = (session.exercises && session.exercises.length)
+   ? session.exercises
+   : (session.blocks || []).map(b => ({
+       id: b.lift || b.name,
+       name: b.lift ? (KEY_LIFTS[b.lift]?.label || b.lift) : b.name,
+       sets: b.sets || 3,
+       reps: b.reps || 8,
+       intensity: b.intensity,
+       format: b.format,
+     }))
+ return source.map(e => {
  const lastEntry = findLastEntry(priorLogs, e.id || e.name)
  const suggestedWeight = lastEntry ? topWeight(lastEntry) : null
  return {
