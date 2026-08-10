@@ -437,9 +437,9 @@ function DayRow({ day, plan, onOpen }) {
  <div style={{ display:'flex', gap: 8, alignItems:'center', flexWrap:'wrap'}}>
  <div style={{ fontWeight: 800, fontSize: t.font.md }}>{s.name}</div>
  {s.wodType && <Badge color={t.color.danger}>{s.wodType}</Badge>}
-{rowExercises.some(e => e.supersetWith) && ...
- {s.exercises.some(e => e.dropSetOnLast) && ...
- {s.exercises.some(e => e.amrap) && ...
+ {rowExercises.some(e => e.supersetWith) && <Badge color={t.color.info}> סופרסט</Badge>}
+ {rowExercises.some(e => e.dropSetOnLast) && <Badge color={t.color.danger}> דרופסט</Badge>}
+ {rowExercises.some(e => e.amrap) && <Badge color={t.color.warning}> AMRAP</Badge>}
  </div>
  <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>
 {rowExercises.length} תרגילים · לחץ להתחלה
