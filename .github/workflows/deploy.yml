@@ -1,5 +1,9 @@
 name: Deploy to GitHub Pages
 
+# Deploys to https://avivgvili6-pixel.github.io/<repo>/ — after the repo
+# was renamed businessos → selano, BASE_PATH evaluates to /selano/ at
+# workflow runtime (github.event.repository.name is dynamic).
+
 on:
   push:
     branches:
