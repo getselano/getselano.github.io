@@ -32,10 +32,15 @@ export function Onboarding() {
  const set = (patch) => { setData(d => ({ ...d, ...patch })); setError(null) }
  const next = () => {
  if (step === 2 && goalPhase === 'intro') {
- setError('צריך לבחור אחת מהאופציות למטה: "בואו נבנה מטרה"או "דלג לעת עתה"')
+ setError('צריך לבחור אחת מהאופציות למטה: "בואו נבנה מטרה" או "דלג לעכשיו"')
  return
  }
  setError(null)
+ setStep(s => Math.min(STEPS.length - 1, s + 1))
+ }
+ const skipGoal = () => {
+ setError(null)
+ setGoalPhase('skipped')
  setStep(s => Math.min(STEPS.length - 1, s + 1))
  }
  const prev = () => { setError(null); setStep(s => Math.max(0, s - 1)) }
@@ -102,7 +107,7 @@ export function Onboarding() {
  <div style={{ minHeight: 340 }}>
  {step === 0 && <StepWelcome />}
  {step === 1 && <StepPersonal data={data} set={set} />}
- {step === 2 && <StepGoalIntro onStartWizard={() => setGoalPhase('wizard')} onSkip={next} goalPhase={goalPhase} />}
+ {step === 2 && <StepGoalIntro onStartWizard={() => setGoalPhase('wizard')} onSkip={skipGoal} goalPhase={goalPhase} />}
  {step === 3 && <StepDiet data={data} set={set} />}
  {step === 4 && <StepPhoto onUpload={addProgressPhoto} userId={user?.id} onNext={next} />}
  {step === 5 && <StepFinish data={data} />}
