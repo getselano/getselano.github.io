@@ -7,6 +7,7 @@ import { bmr, tdee, macros, activityFactors, goalAdjustments, dietTemplates, bmi
 import { foods } from '../../../data/foods'
 import { dietInfo } from '../../../data/dietTemplates'
 import { bloodMarkers, statusForValue } from '../../../data/bloodMarkers'
+import { extractBloodMarkersFromFile, aiEnabled } from '../../../services/aiCoach'
 import { todayKey } from '../../../utils/date'
 import { MealPlanner } from './MealPlanner'
 import { FoodPickerPro } from './FoodPickerPro'
@@ -521,6 +522,7 @@ function BloodTest() {
  const { state, addBlood } = useApp()
  const { isRTL } = useI18n()
  const [values, setValues] = useState({})
+ const [uploadState, setUploadState] = useState({ status: 'idle', message: '' })
  const last = state.bloodTests[0]
 
  const analysis = useMemo(() => (last ? bloodMarkers.map(m => ({
@@ -529,10 +531,91 @@ function BloodTest() {
 
  const flags = analysis.filter(a => a.status === 'low'|| a.status === 'high')
 
+ async function handleFile(e) {
+   const file = e.target.files?.[0]
+   e.target.value = '' // allow re-uploading the same file
+   if (!file) return
+   if (file.size > 8 * 1024 * 1024) {
+     setUploadState({ status: 'err', message: isRTL ? 'הקובץ גדול מדי (מקסימום 8MB). צלם מחדש באיכות נמוכה יותר.' : 'File too large (max 8MB).' })
+     return
+   }
+   setUploadState({ status: 'loading', message: isRTL ? 'קורא את הבדיקה, זה לוקח בין 5 ל־20 שניות…' : 'Reading blood test, may take 5–20 seconds…' })
+   try {
+     const dataUrl = await new Promise((resolve, reject) => {
+       const r = new FileReader()
+       r.onload = () => resolve(r.result)
+       r.onerror = reject
+       r.readAsDataURL(file)
+     })
+     const base64 = String(dataUrl).split(',')[1]
+     const result = await extractBloodMarkersFromFile({ fileData: base64, mimeType: file.type })
+     if (!result || !Object.keys(result.values || {}).length) {
+       setUploadState({ status: 'err', message: isRTL ? 'לא הצלחתי לזהות ערכים במסמך. וודא שהתמונה חדה וכתובה בברור, או הזן ידנית.' : 'Could not detect values. Try a sharper photo or enter manually.' })
+       return
+     }
+     const found = Object.entries(result.values)
+     setValues(v => ({ ...v, ...Object.fromEntries(found.map(([k, val]) => [k, String(val)])) }))
+     setUploadState({
+       status: 'ok',
+       message: isRTL
+         ? `זוהו ${found.length} סמנים. בדוק את הערכים ולחץ "נתח בדיקה".`
+         : `Detected ${found.length} markers. Review and click "Analyze".`,
+     })
+   } catch (err) {
+     setUploadState({ status: 'err', message: isRTL ? 'שגיאה בקריאת הקובץ. נסה שוב או הזן ידנית.' : 'File read error. Try again or enter manually.' })
+   }
+ }
+
  return (
  <div style={{ display:'grid', gap: 16 }}>
  <Card>
- <SectionHeader title={isRTL ? 'קורא בדיקות דם' : 'Blood test reader'} subtitle={isRTL ? 'הזן ערכים ותקבל פרשנות תזונתית מותאמת' : 'Enter values and get a tailored nutrition interpretation'} />
+ <SectionHeader title={isRTL ? 'קורא בדיקות דם' : 'Blood test reader'} subtitle={isRTL ? 'העלה מסמך או צלם — נחלץ את הערכים אוטומטית' : 'Upload a document or photo — values are extracted automatically'} />
+
+ {aiEnabled && (
+   <div style={{
+     padding: 14, marginBottom: 14,
+     borderRadius: t.radius.md,
+     background: `${t.color.gold}0d`,
+     border: `1px dashed ${t.color.gold}66`,
+   }}>
+     <div style={{ fontSize: t.font.sm, color: t.color.textDim, marginBottom: 10, lineHeight: 1.5 }}>
+       {isRTL
+         ? '📎 העלה תמונה/PDF של בדיקת הדם ונמלא לך את הערכים אוטומטית. הקובץ נשלח למנוע קריאה חכם — לא נשמר אצלנו.'
+         : '📎 Upload a photo/PDF of your blood test and we\'ll fill in the values automatically. The file is sent to our AI reader — not stored.'}
+     </div>
+     <label style={{ display:'inline-block', cursor: uploadState.status === 'loading' ? 'wait' : 'pointer' }}>
+       <input
+         type="file"
+         accept="image/*,application/pdf"
+         style={{ display:'none' }}
+         disabled={uploadState.status === 'loading'}
+         onChange={handleFile}
+       />
+       <span style={{
+         display:'inline-flex', alignItems:'center', gap: 8,
+         padding:'10px 18px',
+         background: t.color.gold, color:'#0d0d14',
+         border:`1px solid ${t.color.gold}`, borderRadius: t.radius.md,
+         fontWeight: 700, fontSize: t.font.md,
+         opacity: uploadState.status === 'loading' ? 0.7 : 1,
+       }}>
+         {uploadState.status === 'loading'
+           ? (isRTL ? '⏳ קורא…' : '⏳ Reading…')
+           : (isRTL ? '📷 העלה מסמך / צלם' : '📷 Upload / Photo')}
+       </span>
+     </label>
+     {uploadState.message && (
+       <div style={{
+         marginTop: 10, padding: 10, borderRadius: t.radius.sm,
+         fontSize: t.font.sm, lineHeight: 1.5,
+         background: uploadState.status === 'err' ? `${t.color.danger}15` : uploadState.status === 'ok' ? `${t.color.success}15` : t.color.bgSoft,
+         color: uploadState.status === 'err' ? t.color.danger : uploadState.status === 'ok' ? t.color.success : t.color.text,
+         border: `1px solid ${uploadState.status === 'err' ? t.color.danger + '44' : uploadState.status === 'ok' ? t.color.success + '44' : t.color.border}`,
+       }}>{uploadState.message}</div>
+     )}
+   </div>
+ )}
+
  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
  {bloodMarkers.map(m => (
  <Input key={m.id} label={`${m.name} (${m.unit})`} type="number"placeholder="—"
@@ -540,8 +623,8 @@ function BloodTest() {
  ))}
  </div>
  <div style={{ marginTop: 16, display:'flex', gap: 10, justifyContent:'flex-end'}}>
- <Button variant="ghost"onClick={() => setValues({})}>{isRTL ? 'נקה' : 'Clear'}</Button>
- <Button onClick={() => { addBlood({ date: new Date().toISOString(), values }); setValues({}) }}>{isRTL ? 'נתח בדיקה' : 'Analyze'}</Button>
+ <Button variant="ghost"onClick={() => { setValues({}); setUploadState({ status:'idle', message:'' }) }}>{isRTL ? 'נקה' : 'Clear'}</Button>
+ <Button onClick={() => { addBlood({ date: new Date().toISOString(), values }); setValues({}); setUploadState({ status:'idle', message:'' }) }}>{isRTL ? 'נתח בדיקה' : 'Analyze'}</Button>
  </div>
  </Card>
 

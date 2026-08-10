@@ -106,6 +106,98 @@ export async function askAiCoach({ question, history = [], userContext = {} }) {
   }
 }
 
+// Extract blood-test values from an uploaded image or PDF using Gemini vision.
+// fileData is a base64 string (without the data: prefix). mimeType is e.g. "image/jpeg" or "application/pdf".
+// Returns { values: { markerId: number, ... }, detectedNames: [...] } or null on failure.
+//
+// The prompt lists exactly the marker IDs the app expects. Gemini scans the
+// document and returns only what it finds — never invents values.
+export async function extractBloodMarkersFromFile({ fileData, mimeType }) {
+  if (!aiEnabled) return null
+  if (!fileData || !mimeType) return null
+
+  const markerList = [
+    { id: 'hgb',      aliases: ['Hemoglobin', 'HGB', 'המוגלובין'] },
+    { id: 'ferritin', aliases: ['Ferritin', 'פריטין'] },
+    { id: 'b12',      aliases: ['B12', 'Vitamin B12', 'ויטמין B12', 'קובלמין'] },
+    { id: 'vitD',     aliases: ['Vitamin D', '25-OH Vitamin D', '25(OH)D', 'ויטמין D'] },
+    { id: 'glucose',  aliases: ['Glucose', 'Fasting Glucose', 'גלוקוז', 'סוכר בצום'] },
+    { id: 'hba1c',    aliases: ['HbA1c', 'A1C', 'המוגלובין מסוכרר'] },
+    { id: 'chol',     aliases: ['Total Cholesterol', 'Cholesterol', 'כולסטרול כולל'] },
+    { id: 'ldl',      aliases: ['LDL', 'LDL Cholesterol', 'כולסטרול LDL'] },
+    { id: 'hdl',      aliases: ['HDL', 'HDL Cholesterol', 'כולסטרול HDL'] },
+    { id: 'tg',       aliases: ['Triglycerides', 'TG', 'טריגליצרידים'] },
+    { id: 'alt',      aliases: ['ALT', 'SGPT', 'אלט'] },
+    { id: 'ast',      aliases: ['AST', 'SGOT', 'אסט'] },
+    { id: 'creat',    aliases: ['Creatinine', 'קריאטינין'] },
+    { id: 'tsh',      aliases: ['TSH', 'Thyroid Stimulating Hormone', 'תריס'] },
+    { id: 'crp',      aliases: ['CRP', 'C-Reactive Protein', 'חלבון C תגובתי'] },
+    { id: 'testo',    aliases: ['Testosterone', 'Total Testosterone', 'טסטוסטרון'] },
+  ]
+
+  const prompt = `אתה עוזר שקורא מסמכי בדיקות דם ומחלץ ערכים.
+
+המסמך הבא הוא בדיקת דם (בעברית או באנגלית). חלץ ערכים לסמנים הבאים בלבד:
+
+${markerList.map(m => `- ${m.id}: ${m.aliases.join(' / ')}`).join('\n')}
+
+הוראות חשובות:
+1. החזר **רק** JSON תקין, בלי טקסט לפני או אחרי, בלי \`\`\`json.
+2. הכלל בתוצאה רק ערכים שמצאת בפועל במסמך. אל תמציא נתונים.
+3. הערך חייב להיות מספר בלבד (לא מחרוזת, בלי יחידות).
+4. אם ערך מופיע ביחידות שונות מהמקובל, המר: TSH ל־mIU/L, ויטמין D ל־ng/mL, וכו'.
+5. אם לא מצאת סמן כלשהו — פשוט אל תכלול אותו בתוצאה.
+
+מבנה התשובה:
+{"values": {"hgb": 14.2, "ferritin": 45, ...}, "note": "הערה קצרה על הבדיקה (תאריך, מעבדה) — אופציונלי"}`
+
+  try {
+    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: fileData } },
+          ],
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 800,
+          responseMimeType: 'application/json',
+        },
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn('[aiCoach] blood extract failed:', response.status, await response.text())
+      return null
+    }
+
+    const data = await response.json()
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) return null
+
+    // Gemini is asked for pure JSON. Strip anything wrapping in case it slipped.
+    const cleaned = text.trim().replace(/^```json\s*/i, '').replace(/```\s*$/i, '')
+    const parsed = JSON.parse(cleaned)
+    // Sanity — only keep numeric values that match a known marker id
+    const known = new Set(markerList.map(m => m.id))
+    const values = {}
+    for (const [k, v] of Object.entries(parsed.values || {})) {
+      if (!known.has(k)) continue
+      const n = Number(v)
+      if (Number.isFinite(n)) values[k] = n
+    }
+    return { values, note: parsed.note || null }
+  } catch (err) {
+    console.warn('[aiCoach] extract error:', err.message)
+    return null
+  }
+}
+
 // Detect if a question is emotional/personal - should route to mental coach
 export function isMentalQuestion(text) {
   const mentalKeywords = [
