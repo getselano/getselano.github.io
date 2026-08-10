@@ -439,7 +439,7 @@ function DayRow({ day, plan, onOpen }) {
  {s.wodType && <Badge color={t.color.danger}>{s.wodType}</Badge>}
  {rowExercises.some(e => e.supersetWith) && <Badge color={t.color.info}> סופרסט</Badge>}
  {rowExercises.some(e => e.dropSetOnLast) && <Badge color={t.color.danger}> דרופסט</Badge>}
- {rowExercises.some(e => e.amrap) && <Badge color={t.color.warning}> AMRAP</Badge>}
+ {rowExercises.some(e => e.amrap) && <Badge color={t.color.warning}> AMRAP</Badge>} 
  </div>
  <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>
 {rowExercises.length} תרגילים · לחץ להתחלה
