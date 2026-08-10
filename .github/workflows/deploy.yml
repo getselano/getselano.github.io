@@ -38,7 +38,7 @@ jobs:
 
       - name: Build (with GitHub Pages base path)
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+          BASE_PATH: /
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
           VITE_GEMINI_KEY: ${{ secrets.VITE_GEMINI_KEY }}
