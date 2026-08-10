@@ -46,17 +46,48 @@ export function WodDisplay({ wod, onStart, onRegenerate, onShowVideos }) {
  borderRadius: t.radius.sm, padding: t.space.lg,
  fontFamily:'Space Mono, ui-monospace, monospace',
  fontSize: t.font.md, color: t.color.text, lineHeight: 1.7,
- whiteSpace:'pre-wrap', direction:'rtl', textAlign:'right',
+ // Prescription lines are English-first — render LTR so text stays aligned
+ whiteSpace:'pre-wrap', direction:'ltr', textAlign:'left',
  margin: 0, overflowX:'auto',
  }}>
  {wod.lines.join('\n')}
  </pre>
 
+ {/* Hebrew translations panel — English movement primary + Hebrew secondary.
+     Applies whether the UI is in Hebrew or English so trainees always see
+     the professional (English) term paired with the mother-tongue label. */}
  {wod.movements?.length > 0 && (
- <div style={{ marginTop: t.space.md, display:'flex', flexWrap:'wrap', gap: 6 }}>
- {wod.movements.map(m => (
- <Badge key={m.id} color={t.color.info}>{m.he}</Badge>
- ))}
+ <div style={{
+   marginTop: t.space.md,
+   background: t.color.bgSoft,
+   border: `1px solid ${t.color.border}`,
+   borderRadius: t.radius.sm,
+   padding: t.space.md,
+ }}>
+   <div style={{
+     fontFamily: t.font.family.mono, fontSize: 9, letterSpacing: '0.24em',
+     textTransform: 'uppercase', color: t.color.silver3, fontWeight: 700,
+     marginBottom: 8,
+   }}>Movements · תרגילים</div>
+   <div style={{ display: 'grid', gap: 6 }}>
+     {wod.movements.map(m => (
+       <div key={m.id} style={{
+         display: 'flex', alignItems: 'baseline', gap: 10,
+         padding: '6px 8px', borderRadius: 6,
+         background: t.color.bg,
+       }}>
+         <div style={{
+           fontFamily: 'Space Mono, ui-monospace, monospace',
+           fontSize: 14, fontWeight: 700, color: t.color.gold,
+           letterSpacing: '-0.005em',
+         }}>{m.en || m.he}</div>
+         <div style={{
+           fontSize: 11, color: t.color.silver2,
+           direction: 'rtl',
+         }}>· {m.he}</div>
+       </div>
+     ))}
+   </div>
  </div>
  )}
 

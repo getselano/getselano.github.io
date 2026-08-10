@@ -242,12 +242,44 @@ export function RoutineRunner({ routine, open, onClose }) {
  </div>
  )}
  {/* Exercises */}
- {live.map((ex, idx) => {
+ {(() => {
+   // Superset badges: walk the exercises once, assign a letter + neon color
+   // per unique supersetGroup, and warn if any group's members are NOT
+   // consecutive in the routine (a saved-file corruption case that would
+   // otherwise make the workout impossible to run in the intended order).
+   const NEON = ['#00E5FF','#FF2CB4','#39FF14','#FF6E00','#B026FF','#FFEA00']
+   const ssBadges = {}
+   const ssMembers = {}
+   let ssIdx = 0
+   live.forEach((ex, i) => {
+     const g = ex.supersetGroup
+     if (!g) return
+     if (!ssBadges[g]) {
+       ssBadges[g] = { letter: String.fromCharCode(65 + (ssIdx % 26)), color: NEON[ssIdx % NEON.length] }
+       ssIdx++
+       ssMembers[g] = []
+     }
+     ssMembers[g].push(i)
+   })
+   // Adjacency check: for each group, indices must be an unbroken sequence
+   const ssBroken = {}
+   Object.entries(ssMembers).forEach(([g, arr]) => {
+     const contiguous = arr.every((v, i) => i === 0 || v === arr[i - 1] + 1)
+     if (!contiguous) ssBroken[g] = true
+   })
+   return live.map((ex, idx) => {
  // Free-text exercises (from Legend routines etc.) don't have an id
  // in the BB catalog — fall back to the stored exerciseName.
  const cataloged = EXERCISE_BY_ID[ex.exerciseId]
  const exercise = cataloged || { he: ex.exerciseName || ex.name || 'תרגיל', en: '' }
  if (!ex.sets) return null
+ const ssBadge = ex.supersetGroup ? ssBadges[ex.supersetGroup] : null
+ const ssBrokenHere = ex.supersetGroup ? !!ssBroken[ex.supersetGroup] : false
+ const ssGroupSize = ex.supersetGroup ? (ssMembers[ex.supersetGroup]?.length || 0) : 0
+ const ssPos = ex.supersetGroup ? (ssMembers[ex.supersetGroup].indexOf(idx) + 1) : 0
+ const ssIsTop = ssGroupSize > 0 && ssPos === 1
+ const ssIsBottom = ssGroupSize > 0 && ssPos === ssGroupSize
+ const ssIsMiddle = ssGroupSize >= 3 && !ssIsTop && !ssIsBottom
  const workingSetsCount = ex.sets.filter(s => s.type === 'working').length
  const dropsetsCount = ex.sets.filter(s => s.type === 'dropset').length
  // "Completed" means completed working sets — dropsets ride on their parent
@@ -257,9 +289,34 @@ export function RoutineRunner({ routine, open, onClose }) {
  const allDone = totalRequired > 0 && completedRequired >= totalRequired
  const collapsed = !!ex.collapsed
  return (
- <Card key={idx} style={{
+ <React.Fragment key={idx}>
+ {/* Superset link banner — shown above every non-first member of a group */}
+ {ssBadge && !ssIsTop && (
+   <div style={{
+     padding:'6px 0', textAlign:'center',
+     fontFamily: t.font.family.mono, fontSize: 10, letterSpacing:'0.24em',
+     color: ssBadge.color, fontWeight: 800,
+     marginTop: -4, marginBottom: 2,
+     textShadow: `0 0 8px ${ssBadge.color}80`,
+   }}>↕ {ssGroupSize >= 3 ? 'TRIPLE-SET' : 'SUPERSET'} · {ssBadge.letter} · בלי מנוחה</div>
+ )}
+ {/* Broken-superset warning — shows only if group members aren't contiguous */}
+ {ssBrokenHere && ssIsTop && (
+   <div style={{
+     padding:'8px 10px', marginBottom: 6,
+     background: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.5)',
+     borderRadius: t.radius.sm, color: '#ff8080', fontSize: 11,
+     fontFamily: t.font.family.mono, letterSpacing: '0.06em',
+   }}>⚠ סופרסט {ssBadge.letter}: התרגילים לא ברצף. תקן ב־Builder כדי להריץ נכון.</div>
+ )}
+ <Card style={{
  marginBottom: t.space.md,
- border: allDone ? `1px solid ${t.color.wineLight}55` : undefined,
+ border: ssBadge ? `1px solid ${ssBadge.color}` : (allDone ? `1px solid ${t.color.wineLight}55` : undefined),
+ boxShadow: ssBadge ? `0 0 0 1px ${ssBadge.color}22, 0 0 12px ${ssBadge.color}20` : undefined,
+ borderTopLeftRadius: !ssIsTop && ssBadge ? 0 : undefined,
+ borderTopRightRadius: !ssIsTop && ssBadge ? 0 : undefined,
+ borderBottomLeftRadius: !ssIsBottom && ssBadge ? 0 : undefined,
+ borderBottomRightRadius: !ssIsBottom && ssBadge ? 0 : undefined,
  }}>
  {/* Header — the whole row is a clickable collapse target */}
  <button
@@ -355,7 +412,7 @@ export function RoutineRunner({ routine, open, onClose }) {
  }}>
  <span>Set</span>
  <span>Kg</span>
- <span>Reps</span>
+ <span style={{ color: t.color.gold, fontWeight: 800, letterSpacing:'0.16em' }}>Reps ★</span>
  <span>Plate</span>
  <span>·</span>
  </div>
@@ -432,7 +489,7 @@ export function RoutineRunner({ routine, open, onClose }) {
  />
  <input type="number"value={s.actualReps || ''}
  onChange={e => updateActual(idx, si,'actualReps', e.target.value)}
- placeholder={String(s.reps || '—')} style={setInput}
+ placeholder={String(s.reps || '—')} style={repsInput}
  />
  <button
  onClick={() => setPlateOpen({ weight: s.actualWeight || s.weight })}
@@ -465,8 +522,10 @@ export function RoutineRunner({ routine, open, onClose }) {
  )
  })}
  </Card>
+ </React.Fragment>
  )
- })}
+ })
+ })()}
 
  {/* Sticky footer — reset + finish */}
  <div style={{
@@ -560,4 +619,16 @@ const setInput = {
  letterSpacing:'-0.02em',
  fontVariantNumeric:'tabular-nums',
  textAlign:'center', width:'100%', outline:'none',
+}
+
+// Reps get their own style — the primary target the user is chasing per set,
+// so it stands out visually: bigger, bolder, gold-tinted.
+const repsInput = {
+ ...setInput,
+ fontSize: 20,
+ fontWeight: 900,
+ color: t.color.gold,
+ borderColor: `${t.color.gold}55`,
+ background: `${t.color.gold}0d`,
+ letterSpacing: '-0.03em',
 }

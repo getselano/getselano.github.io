@@ -64,18 +64,24 @@ function randInRange([lo, hi]) {
   return Math.round(lo + Math.random() * (hi - lo))
 }
 
+// CrossFit standard: the prescription line uses the ENGLISH movement name
+// verbatim (Burpee Box Jump Overs, Clean and Jerk, etc.) regardless of UI
+// language. The Hebrew rendering happens separately in WodDisplay under
+// each line, at a smaller size, so trainees see the professional term first
+// and the translation as a subtitle.
 function movementLine(m, count, ctx) {
   const rf = repFactor({ sex: ctx.sex, age: ctx.age })
   const [lo, hi] = adjustReps(m.reps[ctx.lengthKey], rf)
   const reps = count != null ? count : randInRange([lo, hi])
   const load = loadPair(m, ctx.sex)
   const unit = m.unit || 'reps'
-  const unitHe = { reps: '', meters: 'מ׳', calories: 'קלוריות', seconds: 'שנ׳' }[unit] || ''
+  const unitEn = { reps: '', meters: 'm', calories: 'cal', seconds: 'sec' }[unit] || ''
+  const nameEn = m.en || m.he
 
-  if (unit === 'meters')   return `${reps}${unitHe ? ' ' + unitHe : ''} ${m.he}${load ? ` (${load})` : ''}`
-  if (unit === 'calories') return `${reps} ${unitHe} ${m.he}`
-  if (unit === 'seconds')  return `${reps} ${unitHe} ${m.he}`
-  return `${reps} ${m.he}${load ? ` (${load})` : ''}`
+  if (unit === 'meters')   return `${reps}${unitEn ? unitEn : ''} ${nameEn}${load ? ` (${load})` : ''}`
+  if (unit === 'calories') return `${reps} ${unitEn} ${nameEn}`
+  if (unit === 'seconds')  return `${reps} ${unitEn} ${nameEn}`
+  return `${reps} ${nameEn}${load ? ` (${load})` : ''}`
 }
 
 // ─── EMOM builder ──────────────────────────────────────
@@ -93,15 +99,15 @@ function buildEMOM(ctx) {
     const m = perMinute[0].m
     const [lo, hi] = adjustReps(m.reps.short, rf)
     const reps = Math.round((lo + hi) / 2)
-    lines.push(`כל דקה למשך ${totalMin} דקות:`)
-    lines.push(`  ${reps} ${m.he}${loadPair(m, ctx.sex) ? ` (${loadPair(m, ctx.sex)})` : ''}`)
+    lines.push(`Every minute for ${totalMin} min · כל דקה ל־${totalMin} דקות:`)
+    lines.push(`  ${reps} ${m.en || m.he}${loadPair(m, ctx.sex) ? ` (${loadPair(m, ctx.sex)})` : ''}`)
   } else {
-    lines.push(`EMOM ${totalMin} דקות, בסבב:`)
+    lines.push(`EMOM ${totalMin} min:`)
     perMinute.forEach((entry, i) => {
       const m = entry.m
       const [lo, hi] = adjustReps(m.reps.short, rf)
       const reps = Math.round((lo + hi) / 2)
-      lines.push(`  דקה ${i + 1}: ${reps} ${m.he}${loadPair(m, ctx.sex) ? ` (${loadPair(m, ctx.sex)})` : ''}`)
+      lines.push(`  Min ${i + 1}: ${reps} ${m.en || m.he}${loadPair(m, ctx.sex) ? ` (${loadPair(m, ctx.sex)})` : ''}`)
     })
   }
 
@@ -121,7 +127,7 @@ function buildAMRAP(ctx) {
   const count = Math.min(ctx.movements.length, 5)
   const chosen = pickN(ctx.movements, count)
 
-  const lines = [`AMRAP ${totalMin} דקות:`]
+  const lines = [`AMRAP ${totalMin} min:`]
   chosen.forEach(m => lines.push(`  ${movementLine(m, null, ctx)}`))
 
   return {
@@ -140,9 +146,9 @@ function buildForTime(ctx) {
   const chosen = pickN(ctx.movements, Math.min(ctx.movements.length, 3))
   const rounds = ctx.lengthKey === 'short' ? 3 : ctx.lengthKey === 'medium' ? 5 : 8
 
-  const lines = [`${rounds} סיבובים For Time:`]
+  const lines = [`${rounds} Rounds For Time · ${rounds} סיבובים:`]
   chosen.forEach(m => lines.push(`  ${movementLine(m, null, ctx)}`))
-  lines.push(`(Time Cap: ${totalMin} דקות)`)
+  lines.push(`(Time Cap: ${totalMin} min)`)
 
   return {
     format: 'for_time',
@@ -164,9 +170,9 @@ function buildIntervals(ctx) {
   const chosen = pickN(ctx.movements, Math.min(ctx.movements.length, rounds))
   const cycle = chosen.length ? chosen : ctx.movements.slice(0, 1)
 
-  const lines = [`${rounds} סיבובים אינטרוולים:`]
-  lines.push(`  עבודה: ${workSec} שנ׳   מנוחה: ${restSec} שנ׳`)
-  cycle.forEach((m, i) => lines.push(`  סיבוב ${i + 1}: ${m.he}${loadPair(m, ctx.sex) ? ` (${loadPair(m, ctx.sex)})` : ''}`))
+  const lines = [`${rounds} Intervals · ${rounds} סיבובים:`]
+  lines.push(`  Work: ${workSec}s   Rest: ${restSec}s`)
+  cycle.forEach((m, i) => lines.push(`  Round ${i + 1}: ${m.en || m.he}${loadPair(m, ctx.sex) ? ` (${loadPair(m, ctx.sex)})` : ''}`))
 
   return {
     format: 'intervals',
@@ -191,10 +197,10 @@ function buildChipper(ctx) {
       ? [100, 80, 60, 40, 20]
       : [50, 40, 30, 20, 10]
 
-  const lines = [`Chipper (For Time, ${totalMin} דקות cap):`]
+  const lines = [`Chipper · For Time (${totalMin} min cap):`]
   chosen.forEach((m, i) => {
     const reps = Math.round((scheme[i] || 20) * rf * 0.5)
-    lines.push(`  ${reps} ${m.he}${loadPair(m, ctx.sex) ? ` (${loadPair(m, ctx.sex)})` : ''}`)
+    lines.push(`  ${reps} ${m.en || m.he}${loadPair(m, ctx.sex) ? ` (${loadPair(m, ctx.sex)})` : ''}`)
   })
 
   return {
@@ -217,10 +223,10 @@ function buildStrengthMetCon(ctx) {
   const metconMin = ctx.lengthKey === 'short' ? 6 : ctx.lengthKey === 'medium' ? 12 : 20
   const totalMin = 15 + metconMin // ~15 min for strength part
 
-  const lines = [`A) כוח: 5×5 ${s.he}${loadPair(s, ctx.sex) ? ` @${loadPair(s, ctx.sex)}` : ''}`]
-  lines.push(`   מנוחה 2-3 דקות בין סטים`)
+  const lines = [`A) Strength · 5×5 ${s.en || s.he}${loadPair(s, ctx.sex) ? ` @${loadPair(s, ctx.sex)}` : ''}`]
+  lines.push(`   Rest 2-3 min between sets`)
   lines.push(``)
-  lines.push(`B) MetCon — AMRAP ${metconMin} דקות:`)
+  lines.push(`B) MetCon — AMRAP ${metconMin} min:`)
   met.forEach(m => lines.push(`   ${movementLine(m, null, ctx)}`))
 
   return {

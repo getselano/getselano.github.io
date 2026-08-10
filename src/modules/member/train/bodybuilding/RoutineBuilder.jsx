@@ -501,19 +501,58 @@ function ManualBuilder({ routine, seedExercises, open, onClose, onBack }) {
   }
   const deleteExercise = (idx) => setExercises(prev => prev.filter((_, i) => i !== idx))
 
+  // Toggle a superset link between exercises[idx] and exercises[idx+1].
+  //
+  // Behavior (supports pairs of 2 or triples of 3, blocks illegal chains):
+  //  • both already share a group → unlink the entire group
+  //  • current is already in a group with idx-1 (bottom of an existing pair/triple)
+  //    AND next is unlinked → EXTEND that group to include next (pair→triple)
+  //  • current is in group X, next is in a DIFFERENT group Y
+  //    → refuse: would silently orphan one side. Ask user to unlink first.
+  //  • otherwise → create a fresh pair
   const toggleSupersetWithNext = (idx) => {
     if (idx >= exercises.length - 1) return
     const current = exercises[idx]
     const next = exercises[idx + 1]
+
+    // Case A: already paired with next → unlink the whole group (handles triples)
     if (current.supersetGroup && current.supersetGroup === next.supersetGroup) {
-      // Unlink
-      updateExercise(idx, { supersetGroup: null })
-      updateExercise(idx + 1, { supersetGroup: null })
-    } else {
-      const grp = `ss_${Date.now()}_${idx}`
-      updateExercise(idx, { supersetGroup: grp })
-      updateExercise(idx + 1, { supersetGroup: grp })
+      const groupId = current.supersetGroup
+      setExercises(prev => prev.map(ex =>
+        ex.supersetGroup === groupId ? { ...ex, supersetGroup: null } : ex
+      ))
+      return
     }
+
+    // Case B: current is bottom of an existing group with idx-1, next is free
+    //         → extend that group to a triple (cap at 3 members)
+    const currentGroup = current.supersetGroup
+    const prevSharesGroup = idx > 0 && exercises[idx - 1].supersetGroup === currentGroup
+    if (currentGroup && prevSharesGroup && !next.supersetGroup) {
+      const groupSize = exercises.filter(ex => ex.supersetGroup === currentGroup).length
+      if (groupSize >= 3) {
+        alert('סופרסט מוגבל ל־3 תרגילים (טריפל־סט). כדי לצרף עוד — הסר קודם.')
+        return
+      }
+      updateExercise(idx + 1, { supersetGroup: currentGroup })
+      return
+    }
+
+    // Case C: illegal chain — either current is already in a group with SOMEONE ELSE
+    //         (not idx-1), or next is in a different group
+    if (currentGroup && !prevSharesGroup) {
+      alert('התרגיל הזה כבר בסופרסט אחר. הסר את הקישור הקיים לפני יצירת חדש.')
+      return
+    }
+    if (next.supersetGroup && next.supersetGroup !== currentGroup) {
+      alert('התרגיל הבא כבר בסופרסט אחר. הסר את הקישור שלו לפני יצירת חדש.')
+      return
+    }
+
+    // Case D: clean case — create a new pair
+    const grp = `ss_${Date.now()}_${idx}`
+    updateExercise(idx, { supersetGroup: grp })
+    updateExercise(idx + 1, { supersetGroup: grp })
   }
 
   return (
@@ -568,6 +607,7 @@ function ManualBuilder({ routine, seedExercises, open, onClose, onBack }) {
             exerciseInRoutine={ex}
             idx={idx}
             supersetBadge={ex.supersetGroup ? badges[ex.supersetGroup] : null}
+            groupSize={ex.supersetGroup ? exercises.filter(e => e.supersetGroup === ex.supersetGroup).length : 0}
             onUpdate={patch => updateExercise(idx, patch)}
             onDelete={() => deleteExercise(idx)}
             onToggleSupersetWithNext={idx < exercises.length - 1 ? () => toggleSupersetWithNext(idx) : null}
@@ -601,7 +641,7 @@ function ManualBuilder({ routine, seedExercises, open, onClose, onBack }) {
   )
 }
 
-function ExerciseInRoutine({ exerciseInRoutine: ex, idx, supersetBadge, onUpdate, onDelete, onToggleSupersetWithNext, isSupersetTopHalf, isSupersetBottomHalf }) {
+function ExerciseInRoutine({ exerciseInRoutine: ex, idx, supersetBadge, groupSize = 0, onUpdate, onDelete, onToggleSupersetWithNext, isSupersetTopHalf, isSupersetBottomHalf }) {
   const cataloged = EXERCISE_BY_ID[ex.exerciseId]
   const exercise = cataloged || { he: ex.exerciseName || ex.name || 'תרגיל', en: '' }
 
@@ -634,7 +674,7 @@ function ExerciseInRoutine({ exerciseInRoutine: ex, idx, supersetBadge, onUpdate
           color: neon, fontWeight: 800,
           marginTop: -8, marginBottom: -4,
           textShadow: `0 0 8px ${neon}80`,
-        }}>↕ SUPERSET · {letter}</div>
+        }}>↕ {groupSize >= 3 ? 'TRIPLE-SET' : 'SUPERSET'} · {letter}</div>
       )}
       <Card style={{
         marginBottom: t.space.md,
@@ -687,6 +727,20 @@ function ExerciseInRoutine({ exerciseInRoutine: ex, idx, supersetBadge, onUpdate
             // When active, the "next" exercise's badge tells us which color/letter
             // to render — the shared group is on the next exercise's supersetGroup id.
             const activeColor = isSupersetTopHalf && neon ? neon : t.color.wineLight
+            // Label depends on what clicking will DO next:
+            //  • not in a group → "create superset"
+            //  • already top of a pair → shows the existing pair (unlink)
+            //  • bottom of a pair, next is free → "add 3rd (triple)"
+            let label
+            if (isSupersetTopHalf) {
+              label = groupSize >= 3
+                ? `↕ טריפל־סט ${letter} — פעיל`
+                : `↕ סופרסט ${letter} — פעיל`
+            } else if (isSupersetBottomHalf) {
+              label = '↕ הוסף תרגיל שלישי לסופרסט'
+            } else {
+              label = '↕ צור סופרסט עם התרגיל הבא'
+            }
             return (
               <button
                 onClick={onToggleSupersetWithNext}
@@ -699,7 +753,7 @@ function ExerciseInRoutine({ exerciseInRoutine: ex, idx, supersetBadge, onUpdate
                   boxShadow: isSupersetTopHalf ? `0 0 10px ${activeColor}80` : undefined,
                 }}
               >
-                {isSupersetTopHalf ? `↕ סופרסט ${letter} — פעיל` : '↕ צור סופרסט עם התרגיל הבא'}
+                {label}
               </button>
             )
           })()}

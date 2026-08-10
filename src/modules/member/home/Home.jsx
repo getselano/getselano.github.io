@@ -13,7 +13,9 @@ export function Home({ go }) {
  const { state } = useApp()
  const { isRTL } = useI18n()
  const { profile, moodCheckins, mealLogs, workoutLogs } = state
- const first = profile.name?.split(' ')[0] || (isRTL ? 'אלוף' : 'Champion')
+ const isFemale = profile.sex === 'female'
+ const first = profile.name?.split(' ')[0] || (isRTL ? (isFemale ? 'אלופה' : 'אלוף') : 'Champion')
+ const readyWord = isRTL ? (isFemale ? 'מוכנה?' : 'מוכן?') : 'Ready?'
  const _bmr = bmr(profile)
  const _tdee = tdee(_bmr, profile.activity)
  const goalDelta = goalAdjustments[profile.goalKey]?.kcalDelta || 0
@@ -56,7 +58,7 @@ export function Home({ go }) {
  <div style={{ marginBottom: 10 }}>
  <Kicker>{greeting()}</Kicker>
  </div>
- <SectionHead size="h1" emphasis={isRTL ? 'מוכן?' : 'Ready?'} style={{ fontSize: 34, marginBottom: 10 }} className="hfos-hero-title">
+ <SectionHead size="h1" emphasis={readyWord} style={{ fontSize: 34, marginBottom: 10 }} className="hfos-hero-title">
  {first},
  </SectionHead>
  <div style={{
