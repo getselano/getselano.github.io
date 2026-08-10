@@ -2,6 +2,7 @@ import React from 'react'
 import { t } from '../../../theme/tokens'
 import { useApp } from '../../../store/AppStore'
 import { useAuth } from '../../../auth/AuthContext'
+import { readHealthAck } from '../../../components/legal/HealthAcknowledgment'
 import { Card, Button, Ring, Stat, Badge, SectionHeader, ProgressBar } from '../../../components/ui/UI'
 import { BarChart } from '../../../components/charts/Charts'
 import { greeting, DAYS_SHORT_HE, todayKey } from '../../../utils/date'
@@ -28,12 +29,15 @@ export function Home({ go }) {
  const { isRTL } = useI18n()
  const { profile, moodCheckins, mealLogs, workoutLogs } = state
  const isFemale = profile.sex === 'female'
- // Name-resolution chain: profile → auth user → email prefix → gender-tuned
- // fallback ("אלוף/אלופה"). This keeps the greeting personal even for accounts
- // (e.g. admins) that skipped the member onboarding and never wrote profile.name.
+ // Name-resolution chain: profile → auth user → health-ack signer →
+ // email prefix → gender-tuned fallback ("אלוף/אלופה"). Whatever the
+ // trainee typed on the signature pad is the most authoritative source
+ // when profile.name and auth name are both empty.
+ const ackName = readHealthAck()?.signerName
  const first =
    profile.name?.split(' ')[0] ||
    user?.name?.split(' ')[0] ||
+   ackName?.split(' ')[0] ||
    prettifyFromEmail(user?.email) ||
    (isRTL ? (isFemale ? 'אלופה' : 'אלוף') : 'Champion')
  const readyWord = isRTL ? (isFemale ? 'מוכנה?' : 'מוכן?') : 'Ready?'

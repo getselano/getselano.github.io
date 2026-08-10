@@ -183,6 +183,7 @@ function PilotGate({ user, children }) {
 // Checks localStorage first (fast path). If missing, checks Supabase.
 // If both empty → renders <HealthAcknowledgment /> as a full-screen block.
 function HealthAckGate({ user, children }) {
+ const { updateProfile, state: appState } = useApp()
  const [state, setStateVal] = useState(() => readHealthAck() ? 'ok' : 'checking')
 
  useEffect(() => {
@@ -216,8 +217,17 @@ function HealthAckGate({ user, children }) {
  <div style={{ minHeight:'100vh', background: tokens.color.bg, padding: tokens.space.lg, direction:'rtl', color: tokens.color.text, display:'flex', alignItems:'center' }}>
  <div style={{ maxWidth: 900, margin:'0 auto', width:'100%' }}>
  <HealthAcknowledgment
- initialName={user?.name || ''}
- onConfirm={() => setStateVal('ok')}
+ initialName={appState?.profile?.name || user?.name || ''}
+ onConfirm={(record) => {
+   // The name typed on the signature is the trainee's authoritative name —
+   // adopt it as profile.name so the home greeting, coach view, and every
+   // other name-dependent screen use it going forward. Only overwrite when
+   // profile.name is empty (never destroy an existing profile name).
+   if (record?.signerName && !appState?.profile?.name) {
+     updateProfile({ name: record.signerName })
+   }
+   setStateVal('ok')
+ }}
  />
  </div>
  </div>
