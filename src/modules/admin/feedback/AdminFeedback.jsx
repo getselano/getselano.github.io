@@ -14,11 +14,13 @@ export function AdminFeedback() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // 'all' | 'unread'
   const [expanded, setExpanded] = useState(null)
+  const [tableMissing, setTableMissing] = useState(false)
 
   const load = async () => {
     setLoading(true)
     const data = await listFeedback()
     setRows(data)
+    setTableMissing(!!data?.tableMissing)
     setLoading(false)
   }
 
@@ -59,7 +61,7 @@ export function AdminFeedback() {
   if (!totalCount) {
     return (
       <div style={{ display: 'grid', gap: 16 }}>
-        <SetupHint />
+        {(tableMissing || !supabaseEnabled) && <SetupHint />}
         <EmptyState
           icon="💬"
           title="אין עדיין פידבקים"
@@ -102,7 +104,7 @@ export function AdminFeedback() {
         </div>
       </div>
 
-      {!supabaseEnabled && <SetupHint />}
+      {(tableMissing || !supabaseEnabled) && <SetupHint />}
 
       {/* Table */}
       <Card style={{ padding: 0, overflow: 'hidden' }}>

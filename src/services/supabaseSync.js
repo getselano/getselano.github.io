@@ -330,13 +330,20 @@ export async function submitFeedback({ user, body }) {
 
 export async function listFeedback() {
   const cloud = []
+  let tableMissing = false
   if (supabaseEnabled) {
     const { data, error } = await supabase
       .from('member_feedback')
       .select('*')
       .order('created_at', { ascending: false })
-    if (error) console.warn('[supabaseSync] list feedback failed:', error.message)
-    else cloud.push(...(data || []))
+    if (error) {
+      console.warn('[supabaseSync] list feedback failed:', error.message)
+      // Postgres "undefined_table" — banner should tell admin to create it.
+      // Any other error (RLS, network) is not a missing-table problem.
+      if (error.code === '42P01' || /does not exist/i.test(error.message || '')) {
+        tableMissing = true
+      }
+    } else cloud.push(...(data || []))
   }
   // Include local queue so admin can see what hasn't synced yet
   let local = []
@@ -349,9 +356,13 @@ export async function listFeedback() {
     ...r,
     _local: true,
   }))
-  return [...cloud, ...localRows].sort(
+  const rows = [...cloud, ...localRows].sort(
     (a, b) => new Date(b.created_at) - new Date(a.created_at)
   )
+  // Attach tableMissing as a non-enumerable hint so callers can distinguish
+  // "empty because no one wrote yet" from "empty because table doesn't exist"
+  Object.defineProperty(rows, 'tableMissing', { value: tableMissing })
+  return rows
 }
 
 export async function markFeedbackRead(id, read = true) {
