@@ -206,7 +206,8 @@ export function Modal({ open, onClose, title, children, width = 520 }) {
  if (!open) return null
  return (
  <div onClick={onClose} style={{
- position:'fixed', inset:0, background:'rgba(0,0,0,.6)', backdropFilter:'blur(4px)',
+ position:'fixed', inset:0, background:'rgba(0,0,0,.88)', backdropFilter:'blur(14px)',
+ WebkitBackdropFilter:'blur(14px)',
  display:'flex', alignItems:'center', justifyContent:'center', zIndex: 1000, padding: 16,
  }}>
  <div onClick={e=>e.stopPropagation()} style={{
