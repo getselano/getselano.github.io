@@ -5,7 +5,7 @@ import { Sparkline } from '../../../components/charts/Charts'
 import { Kicker, SectionHead, Label, Button as SButton } from '../../../design/components/primitives'
 import { useAuth } from '../../../auth/AuthContext'
 import { supabaseEnabled } from '../../../lib/supabase'
-import { listAllMembers, memberEngagementSummary, adminSendPasswordRecovery } from '../../../services/supabaseSync'
+import { listAllMembers, memberEngagementSummary, adminSendPasswordRecovery, fetchHealthAck } from '../../../services/supabaseSync'
 import { sendAccessLink } from '../../../services/pilot'
 import { useI18n } from '../../../i18n/i18n'
 
@@ -600,6 +600,18 @@ function MemberDrawer({ member, onClose }) {
   // Password recovery action state
   const [resetState, setResetState] = useState({ status: 'idle', message: '' })
 
+  // Health-acknowledgment record — resolves once the drawer opens
+  const [ackState, setAckState] = useState({ loading: true, record: null })
+  const [ackModal, setAckModal] = useState(false)
+  useEffect(() => {
+    let alive = true
+    setAckState({ loading: true, record: null })
+    fetchHealthAck(member.id).then(r => {
+      if (alive) setAckState({ loading: false, record: r })
+    })
+    return () => { alive = false }
+  }, [member.id])
+
   // ── Contact actions ──
   // Try stored phone → localStorage fallback → prompt admin once (and remember)
   const getPhoneForMember = () => {
@@ -768,6 +780,114 @@ function MemberDrawer({ member, onClose }) {
             {coachRecommendation(member)}
           </div>
         </div>
+
+        {/* Health-acknowledgment status — signed? when? name? signature? */}
+        <div style={{
+          padding: 16,
+          background: ackState.record
+            ? `linear-gradient(160deg, rgba(127,206,154,0.06), ${t.color.panel} 70%)`
+            : `linear-gradient(160deg, rgba(255,120,80,0.08), ${t.color.panel} 70%)`,
+          border: `1px solid ${ackState.record ? 'rgba(127,206,154,0.35)' : 'rgba(255,120,80,0.4)'}`,
+          borderRadius: t.radius.lg,
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'baseline', marginBottom: 12, flexWrap: 'wrap', gap: 8,
+          }}>
+            <Kicker color={ackState.record ? 'silver' : 'wine'}>הצהרת בריאות + תקנון</Kicker>
+            <Label color={t.color.silver3}>Signed declaration</Label>
+          </div>
+
+          {ackState.loading ? (
+            <div style={{ color: t.color.silver3, fontSize: 12 }}>טוען…</div>
+          ) : ackState.record ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 12px', background: 'rgba(127,206,154,0.15)',
+                  border: '1px solid rgba(127,206,154,0.55)',
+                  borderRadius: 999, color: '#7fce9a',
+                  fontFamily: t.font.family.mono, fontSize: 11,
+                  letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+                }}>✓ חתום/ה</span>
+                <span style={{ color: t.color.silver1, fontSize: 13 }}>
+                  <b style={{ color: t.color.white }}>{ackState.record.signerName || member.name}</b>
+                </span>
+                <span style={{ color: t.color.silver2, fontSize: 12 }}>
+                  · {new Date(ackState.record.confirmedAt).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </span>
+              </div>
+              <SButton
+                variant="ghost"
+                onClick={() => setAckModal(true)}
+              >צפה בחתימה ובמסמך המלא</SButton>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span style={{
+                display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 6,
+                padding: '5px 12px', background: 'rgba(255,120,80,0.15)',
+                border: '1px solid rgba(255,120,80,0.55)',
+                borderRadius: 999, color: '#ff8858',
+                fontFamily: t.font.family.mono, fontSize: 11,
+                letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+              }}>⚠ לא חתום/ה</span>
+              <div style={{ color: t.color.silver2, fontSize: 12, lineHeight: 1.55 }}>
+                המתאמן/ת עוד לא חתם/ה על הצהרת הבריאות והתקנון. הכניסה הבאה תחייב חתימה — לא ניתן לגשת לשום מסך בלי חתימה.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {ackModal && ackState.record && (
+          <Modal open={ackModal} onClose={() => setAckModal(false)} title={`חתימה — ${ackState.record.signerName || member.name}`} width={720}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <SummaryRow label="שם החותם" value={ackState.record.signerName || '—'} />
+                <SummaryRow label="תאריך" value={new Date(ackState.record.confirmedAt).toLocaleString('he-IL')} />
+                <SummaryRow label="גרסת מסמך" value={ackState.record.documentVersion || '—'} mono />
+                <SummaryRow label="שפה" value={ackState.record.lang || '—'} mono />
+              </div>
+              {ackState.record.signatureDataUrl && (
+                <div style={{
+                  background: '#fff', border: `1px solid ${t.color.border}`,
+                  borderRadius: t.radius.md, padding: 16, textAlign: 'center',
+                }}>
+                  <div style={{
+                    fontFamily: t.font.family.mono, fontSize: 9,
+                    letterSpacing: '0.24em', color: '#666', textTransform: 'uppercase',
+                    fontWeight: 700, marginBottom: 8,
+                  }}>Signature · חתימה</div>
+                  <img src={ackState.record.signatureDataUrl} alt="signature" style={{ maxWidth: '100%', maxHeight: 220 }} />
+                </div>
+              )}
+              {ackState.record.userAgent && (
+                <div style={{
+                  fontFamily: t.font.family.mono, fontSize: 10,
+                  color: t.color.silver3, letterSpacing: '0.04em',
+                  padding: '8px 12px', background: t.color.bgSoft, borderRadius: t.radius.sm,
+                  wordBreak: 'break-all',
+                }}>UA: {ackState.record.userAgent}</div>
+              )}
+              {ackState.record.signedDocumentText && (
+                <details style={{
+                  background: t.color.panel, border: `1px solid ${t.color.border}`,
+                  borderRadius: t.radius.md, padding: 12,
+                }}>
+                  <summary style={{
+                    cursor: 'pointer', color: t.color.silver1, fontSize: 13, fontWeight: 700,
+                  }}>המסמך המלא שנחתם ({ackState.record.signedDocumentText.length.toLocaleString()} תווים)</summary>
+                  <pre style={{
+                    marginTop: 10, whiteSpace: 'pre-wrap', direction: 'rtl',
+                    fontFamily: t.font.family.body, fontSize: 12, color: t.color.silver1,
+                    lineHeight: 1.55, maxHeight: 400, overflowY: 'auto',
+                  }}>{ackState.record.signedDocumentText}</pre>
+                </details>
+              )}
+            </div>
+          </Modal>
+        )}
 
         {/* Account actions — send recovery / copy invite */}
         <div style={{

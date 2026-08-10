@@ -89,9 +89,9 @@ function AppRouter() {
  // Existing users who haven't signed yet will be prompted on their next open.
  if (isMemberView && !state.onboarded) {
    return (
-     <PilotGate user={user}>
-       <HealthAckGate user={user}><Onboarding /></HealthAckGate>
-     </PilotGate>
+     <HealthAckGate user={user}>
+       <PilotGate user={user}><Onboarding /></PilotGate>
+     </HealthAckGate>
    )
  }
 
@@ -146,17 +146,15 @@ function AppRouter() {
  </>
  )
 
- // Members go through PilotGate + HealthAckGate before seeing the shell.
- // Admins bypass both.
- if (isMemberView) {
-   return (
-     <PilotGate user={user}>
-       <HealthAckGate user={user}>{shellUI}</HealthAckGate>
-     </PilotGate>
-   )
- }
-
- return shellUI
+ // HealthAckGate now applies to EVERYONE — admin, coach, member.
+ // The legal/health/privacy bundle must be signed once by every account
+ // that accesses the platform; there is no bypass path. PilotGate only
+ // applies to member view (waitlist cap doesn't apply to staff).
+ return (
+   <HealthAckGate user={user}>
+     {isMemberView ? <PilotGate user={user}>{shellUI}</PilotGate> : shellUI}
+   </HealthAckGate>
+ )
 }
 
 // Pilot cap gate — resolves the user's pilot status, then either shows
