@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { t } from '../../../../theme/tokens'
 import { Card, Button, Badge } from '../../../../components/ui/UI'
 import { FORMATS } from '../../../../data/crossfit/formats'
+import { getSubs } from '../../../../data/crossfit/substitutions'
 
 // WOD Display — the monospace "written prescription"panel, wod-gpt style.
 // Includes copy-to-clipboard and video-tips expander.
@@ -55,7 +56,8 @@ export function WodDisplay({ wod, onStart, onRegenerate, onShowVideos }) {
 
  {/* Hebrew translations panel — English movement primary + Hebrew secondary.
      Applies whether the UI is in Hebrew or English so trainees always see
-     the professional (English) term paired with the mother-tongue label. */}
+     the professional (English) term paired with the mother-tongue label.
+     Now expandable per-row: shows scale/substitute suggestions on click. */}
  {wod.movements?.length > 0 && (
  <div style={{
    marginTop: t.space.md,
@@ -68,25 +70,9 @@ export function WodDisplay({ wod, onStart, onRegenerate, onShowVideos }) {
      fontFamily: t.font.family.mono, fontSize: 9, letterSpacing: '0.24em',
      textTransform: 'uppercase', color: t.color.silver3, fontWeight: 700,
      marginBottom: 8,
-   }}>Movements · תרגילים</div>
+   }}>Movements · תרגילים · לחץ להחלפה / סקייל</div>
    <div style={{ display: 'grid', gap: 6 }}>
-     {wod.movements.map(m => (
-       <div key={m.id} style={{
-         display: 'flex', alignItems: 'baseline', gap: 10,
-         padding: '6px 8px', borderRadius: 6,
-         background: t.color.bg,
-       }}>
-         <div style={{
-           fontFamily: 'Space Mono, ui-monospace, monospace',
-           fontSize: 14, fontWeight: 700, color: t.color.gold,
-           letterSpacing: '-0.005em',
-         }}>{m.en || m.he}</div>
-         <div style={{
-           fontSize: 11, color: t.color.silver2,
-           direction: 'rtl',
-         }}>· {m.he}</div>
-       </div>
-     ))}
+     {wod.movements.map(m => <MovementRow key={m.id} movement={m} />)}
    </div>
  </div>
  )}
@@ -105,4 +91,85 @@ export function WodDisplay({ wod, onStart, onRegenerate, onShowVideos }) {
  </div>
  </Card>
  )
+}
+
+// Per-movement row that expands to show scale/substitute options.
+// Non-expandable when no subs exist for the movement.
+function MovementRow({ movement }) {
+  const [open, setOpen] = useState(false)
+  const subs = getSubs(movement.id)
+  const hasSubs = subs.length > 0
+
+  return (
+    <div style={{
+      background: t.color.bg, borderRadius: 6,
+      border: open ? `1px solid ${t.color.gold}55` : `1px solid transparent`,
+      transition: t.transition,
+    }}>
+      <button
+        onClick={() => hasSubs && setOpen(v => !v)}
+        disabled={!hasSubs}
+        style={{
+          display:'flex', alignItems:'baseline', gap: 10,
+          width:'100%', padding:'8px 10px',
+          background:'transparent', border:'none',
+          cursor: hasSubs ? 'pointer' : 'default',
+          color:'inherit', fontFamily:'inherit', textAlign:'right',
+        }}
+      >
+        <div style={{
+          fontFamily:'Space Mono, ui-monospace, monospace',
+          fontSize: 14, fontWeight: 700, color: t.color.gold,
+          letterSpacing:'-0.005em',
+        }}>{movement.en || movement.he}</div>
+        <div style={{ fontSize: 11, color: t.color.silver2, direction:'rtl' }}>· {movement.he}</div>
+        {hasSubs && (
+          <div style={{
+            marginInlineStart:'auto', fontSize: 10,
+            color: t.color.silver3, fontFamily: t.font.family.mono,
+            letterSpacing:'0.14em', textTransform:'uppercase',
+          }}>{open ? 'סגור ↑' : `סקייל · ${subs.length}`}</div>
+        )}
+      </button>
+
+      {open && hasSubs && (
+        <div style={{
+          padding:'10px 12px 12px',
+          borderTop: `1px solid ${t.color.hairline}`,
+          display:'grid', gap: 8,
+        }}>
+          {subs.map((sub, i) => (
+            <div key={i} style={{
+              display:'grid', gap: 4,
+              padding:'8px 10px', borderRadius: 6,
+              background: t.color.bgSoft,
+              direction:'rtl',
+            }}>
+              <div style={{ display:'flex', alignItems:'center', gap: 8, flexWrap:'wrap' }}>
+                <span style={{
+                  fontFamily:'Space Mono, ui-monospace, monospace',
+                  fontSize: 13, fontWeight: 700, color: t.color.text,
+                  direction:'ltr',
+                }}>{sub.movement.en || sub.movement.he}</span>
+                <span style={{ fontSize: 11, color: t.color.silver2 }}>· {sub.movement.he}</span>
+                <span style={{
+                  marginInlineStart:'auto',
+                  fontSize: 9, fontWeight: 700, letterSpacing:'0.1em',
+                  textTransform:'uppercase', color: sub.reasonColor,
+                  padding:'2px 8px', borderRadius: 999,
+                  background: `${sub.reasonColor}18`,
+                  border: `1px solid ${sub.reasonColor}44`,
+                }}>{sub.reasonLabel}</span>
+              </div>
+              {sub.note && (
+                <div style={{ fontSize: 11, color: t.color.silver1, lineHeight: 1.5 }}>
+                  {sub.note}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
