@@ -326,7 +326,7 @@ export function LoginScreen() {
  const pwHasLetter = /[a-zA-Zא-ת]/.test(password || '')
 
  return (
- <div style={{
+  <div className="hfos-auth" style={{
  minHeight:'100vh',
  background: AUTH.bg,
  display:'flex', alignItems:'flex-start', justifyContent:'center',
@@ -334,7 +334,25 @@ export function LoginScreen() {
  color: AUTH.body,
  fontFamily:'"Heebo", "Inter", -apple-system, "Segoe UI", sans-serif',
  }}>
- {/* Language switcher — pinned top-right */}
+  <style>{`
+   .hfos-auth input, .hfos-auth textarea {
+     color: ${AUTH.wine} !important;
+     -webkit-text-fill-color: ${AUTH.wine} !important;
+     caret-color: ${AUTH.wine} !important;
+     font-weight: 600;
+   }
+   .hfos-auth input::placeholder, .hfos-auth textarea::placeholder {
+     color: ${AUTH.mute} !important;
+     -webkit-text-fill-color: ${AUTH.mute} !important;
+     font-weight: 400;
+   }
+   .hfos-auth input:-webkit-autofill,
+   .hfos-auth input:-webkit-autofill:hover,
+   .hfos-auth input:-webkit-autofill:focus {
+     -webkit-box-shadow: 0 0 0 30px ${AUTH.card} inset !important;
+     -webkit-text-fill-color: ${AUTH.wine} !important;
+   }
+ `}</style>
  <div style={{
  position:'absolute', top: 20,
  [isRTL ? 'left':'right']: 20,
