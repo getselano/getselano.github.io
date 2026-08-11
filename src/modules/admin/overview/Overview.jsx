@@ -6,6 +6,7 @@ import { supabaseEnabled } from '../../../lib/supabase'
 import { listAllMembers, memberEngagementSummary } from '../../../services/supabaseSync'
 import { useI18n } from '../../../i18n/i18n'
 import { Kicker, SectionHead, Label } from '../../../design/components/primitives'
+import { VersionAnnouncement } from '../../../components/admin/VersionAnnouncement'
 
 // Real admin overview — every KPI is honest, sourced from Supabase (or clearly
 // labeled as "not tracked yet"). Every KPI is clickable to open a breakdown
@@ -72,6 +73,7 @@ export function Overview() {
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      <VersionAnnouncement />
       {/* Header hero */}
       <div style={{
         position: 'relative', overflow: 'hidden',
