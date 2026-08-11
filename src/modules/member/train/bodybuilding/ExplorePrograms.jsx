@@ -59,7 +59,7 @@ export function ExplorePrograms() {
  Show all {PROGRAMS.length} programs
  </Button>
 
- <SectionHeader title="⭐ מומלץ עבורך"/>
+ <SectionHeader title="מומלץ עבורך"/>
  <div style={{ display:'grid', gap: 10, marginBottom: t.space.lg }}>
  {featured.map(p => (
  <ProgramCard key={p.id} program={p} onClick={() => setSelectedProgram(p)} />

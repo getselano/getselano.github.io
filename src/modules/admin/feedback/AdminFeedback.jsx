@@ -63,7 +63,7 @@ export function AdminFeedback() {
       <div style={{ display: 'grid', gap: 16 }}>
         {(tableMissing || !supabaseEnabled) && <SetupHint />}
         <EmptyState
-          icon="💬"
+          icon=""
           title="אין עדיין פידבקים"
           subtitle='כאשר מתאמנים ישלחו טקסט דרך "דברו איתנו" זה יופיע כאן'
         />

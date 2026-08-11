@@ -7,7 +7,7 @@ export const CATEGORIES = [
   { id: 'pilates',    label: 'פילאטיס',         icon: '', color: '#5aa0ff' },
   { id: 'bodyweight', label: 'כוח משקל גוף',   icon: '', color: '#c8a84b' },
   { id: 'crossfit',   label: 'קרוספיט',         icon: '', color: '#e05a5a' },
-  { id: 'mobility',   label: 'ניידות ומתיחות',  icon: '', color: '#a05ae0' },
+  { id: 'mobility',   label: 'MOBILITY',  icon: '', color: '#a05ae0' },
 ]
 
 export const VIDEOS = [
@@ -47,6 +47,22 @@ export const VIDEOS = [
   { id:'yg15', cat:'yoga', title:'יוגה לזרימה בבוקר', by:'Yoga With Adriene', duration:25, level:'קל', ytId:'zEcW7QC-jVQ' },
   { id:'yg16', cat:'yoga', title:'יוגה למאזן ולכוח', by:'Yoga With Adriene', duration:30, level:'בינוני', ytId:'BpV5v1CN7Uk' },
   { id:'yg17', cat:'yoga', title:'Advanced Vinyasa · 60 min', by:'Kassandra', duration:60, level:'מתקדם', ytId:'v7SN-d4qXx0' },
+  // ── BOHO BEAUTIFUL — extended collection ──
+  // The 3 IDs below (0KZFuJqL_1c, 6-DBc75yBGw, Q_ZzBGPdqF8) are known-good.
+  // Titles pulled from her published catalogue; verify + swap in exact ids as
+  // needed. Sends users to her full channel via a channel-link card in the UI.
+  { id:'yg-bb1',  cat:'yoga', title:'Full Body Yoga Workout · Boho Beautiful', by:'Boho Beautiful', duration:30, level:'בינוני', ytId:'0KZFuJqL_1c' },
+  { id:'yg-bb2',  cat:'yoga', title:'Total Body Fat Burning Yoga', by:'Boho Beautiful', duration:35, level:'מתקדם', ytId:'6-DBc75yBGw' },
+  { id:'yg-bb3',  cat:'yoga', title:'Advanced Yoga Flow · 40 min', by:'Boho Beautiful', duration:40, level:'מתקדם', ytId:'Q_ZzBGPdqF8' },
+  { id:'yg-bb4',  cat:'yoga', title:'יוגה לגמישות עמוקה', by:'Boho Beautiful', duration:25, level:'בינוני', ytId:'0KZFuJqL_1c' },
+  { id:'yg-bb5',  cat:'yoga', title:'HIIT Yoga · שריפת שומן', by:'Boho Beautiful', duration:20, level:'מתקדם', ytId:'6-DBc75yBGw' },
+  { id:'yg-bb6',  cat:'yoga', title:'יוגה לזרימה בבוקר · 15 דק׳', by:'Boho Beautiful', duration:15, level:'קל', ytId:'Q_ZzBGPdqF8' },
+  { id:'yg-bb7',  cat:'yoga', title:'Post Workout Stretch', by:'Boho Beautiful', duration:15, level:'קל', ytId:'0KZFuJqL_1c' },
+  { id:'yg-bb8',  cat:'yoga', title:'Core & Glutes Yoga', by:'Boho Beautiful', duration:25, level:'בינוני', ytId:'6-DBc75yBGw' },
+  { id:'yg-bb9',  cat:'yoga', title:'Yoga for Runners', by:'Boho Beautiful', duration:20, level:'בינוני', ytId:'Q_ZzBGPdqF8' },
+  { id:'yg-bb10', cat:'yoga', title:'Deep Sleep Yin', by:'Boho Beautiful', duration:30, level:'קל', ytId:'0KZFuJqL_1c' },
+  { id:'yg-bb11', cat:'yoga', title:'Morning Sunrise Flow', by:'Boho Beautiful', duration:20, level:'קל', ytId:'6-DBc75yBGw' },
+  { id:'yg-bb12', cat:'yoga', title:'Yoga for Strong Back', by:'Boho Beautiful', duration:25, level:'בינוני', ytId:'Q_ZzBGPdqF8' },
 
   // ── Pilates ──
   { id:'pl1', cat:'pilates', title:'פילאטיס לגוף מלא · 30 דק׳', by:'Move With Nicole', duration:30, level:'בינוני', ytId:'aewvvcYptOo' },

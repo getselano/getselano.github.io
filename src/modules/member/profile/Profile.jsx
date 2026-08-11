@@ -297,7 +297,7 @@ function InviteFriendsCard() {
             fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
             flexShrink: 0, whiteSpace: 'nowrap',
           }}
-        >{copied ? (isRTL ? '✔ הועתק' : '✔ Copied') : (isRTL ? 'העתק' : 'Copy')}</button>
+        >{copied ? (isRTL ? 'הועתק' : 'Copied') : (isRTL ? 'העתק' : 'Copy')}</button>
       </div>
 
       {/* Share buttons */}

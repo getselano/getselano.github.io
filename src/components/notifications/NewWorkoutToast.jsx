@@ -117,7 +117,7 @@ export function NewWorkoutToast() {
           fontFamily: t.font.family.mono, fontSize: 9, letterSpacing: '0.28em',
           textTransform: 'uppercase', color: t.color.gold, marginBottom: 6, fontWeight: 700,
         }}>
-          ✨ {isRTL ? 'אימון חדש התווסף למאגר!' : 'New workout unlocked!'}
+          {isRTL ? 'אימון חדש התווסף למאגר!' : 'New workout unlocked!'}
         </div>
 
         <div style={{
@@ -145,7 +145,7 @@ export function NewWorkoutToast() {
           marginTop: 10, fontSize: 13, color: t.color.wineLight, fontWeight: 800,
           letterSpacing: '-0.005em',
         }}>
-          {isRTL ? 'בהצלחה! 💪' : 'Good luck! 💪'}
+          {isRTL ? 'בהצלחה!' : 'Good luck!'}
         </div>
       </div>
     </div>

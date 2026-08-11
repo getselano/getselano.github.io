@@ -67,7 +67,7 @@ export function ExerciseLibrary() {
  {/* Popular Exercises section (only when no filters) */}
  {!query && !muscleFilter && !equipmentFilter && (
  <>
- <SectionTitle>⭐ פופולריים</SectionTitle>
+ <SectionTitle>פופולריים</SectionTitle>
  <div style={{ display:'grid', gap: 8, marginBottom: t.space.lg }}>
  {POPULAR_EXERCISES.map(ex => (
  <ExerciseRow key={ex.id} exercise={ex} onClick={() => setSelectedExercise(ex)} />

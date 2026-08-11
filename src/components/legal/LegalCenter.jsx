@@ -81,7 +81,7 @@ export function LegalCenter() {
                 fontFamily: t.font.family.mono, fontSize: 9, letterSpacing: '0.22em',
                 textTransform: 'uppercase', color: '#4a9c6a', fontWeight: 700, marginBottom: 4,
               }}>
-                {isRTL ? '✓ הצהרה חתומה' : '✓ Signed declaration'}
+                {isRTL ? 'הצהרה חתומה' : 'Signed declaration'}
               </div>
               <div style={{ fontSize: 13, color: t.color.text, fontWeight: 600 }}>
                 {ack.signerName || (isRTL ? 'ללא שם' : 'Unnamed')}

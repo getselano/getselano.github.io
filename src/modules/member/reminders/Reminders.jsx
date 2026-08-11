@@ -114,7 +114,7 @@ export function Reminders() {
               : (isRTL ? 'הפעל התראות' : 'Turn reminders on')}
           </SButton>
           <SButton variant="ghost" onClick={testNotification} disabled={perm !== 'granted'}>
-            {testFired ? (isRTL ? 'נשלח ✓' : 'Sent ✓') : (isRTL ? 'שלח בדיקה' : 'Send test')}
+            {testFired ? (isRTL ? 'נשלח' : 'Sent') : (isRTL ? 'שלח בדיקה' : 'Send test')}
           </SButton>
         </div>
       </div>

@@ -502,7 +502,7 @@ function MemberRow({ member, onOpen }) {
             opacity: !member.email ? 0.4 : 1,
           }}
         >{sendState === 'sending' ? 'שולח...'
-          : sendState === 'sent' ? '✔ נשלח'
+          : sendState === 'sent' ? 'נשלח'
           : 'שלח קישור'}</button>
       </td>
     </tr>
@@ -682,7 +682,7 @@ function MemberDrawer({ member, onClose }) {
     setResetState({
       status: res.ok ? 'ok' : 'error',
       message: res.ok
-        ? `✔ קישור כניסה נשלח ל־${member.email}. תוקף שעה — לחיצה מכניסה ישר לאפליקציה בלי סיסמה.`
+        ? `קישור כניסה נשלח ל־${member.email}. תוקף שעה — לחיצה מכניסה ישר לאפליקציה בלי סיסמה.`
         : `שגיאה בשליחה: ${res.error || 'לא ידוע'}`,
     })
   }
@@ -810,7 +810,7 @@ function MemberDrawer({ member, onClose }) {
                   borderRadius: 999, color: '#7fce9a',
                   fontFamily: t.font.family.mono, fontSize: 11,
                   letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
-                }}>✓ חתום/ה</span>
+                }}>חתום/ה</span>
                 <span style={{ color: t.color.silver1, fontSize: 13 }}>
                   <b style={{ color: t.color.white }}>{ackState.record.signerName || member.name}</b>
                 </span>
@@ -832,7 +832,7 @@ function MemberDrawer({ member, onClose }) {
                 borderRadius: 999, color: '#ff8858',
                 fontFamily: t.font.family.mono, fontSize: 11,
                 letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
-              }}>⚠ לא חתום/ה</span>
+              }}>לא חתום/ה</span>
               <div style={{ color: t.color.silver2, fontSize: 12, lineHeight: 1.55 }}>
                 המתאמן/ת עוד לא חתם/ה על הצהרת הבריאות והתקנון. הכניסה הבאה תחייב חתימה — לא ניתן לגשת לשום מסך בלי חתימה.
               </div>

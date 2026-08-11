@@ -138,7 +138,7 @@ function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programT
       exercises: [],
       wodMeta: { discipline: disciplineKey, focus: wod.focus, lines: wod.lines },
     })
-    alert('✔ נשמר בהיסטוריה!')
+    alert('נשמר בהיסטוריה!')
   }
 
   return (

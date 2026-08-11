@@ -7,6 +7,7 @@ import { FloatingAssistant } from './components/assistant/FloatingAssistant'
 import { NotificationScheduler } from './components/notifications/NotificationScheduler'
 import { TrainerCheckIn } from './components/notifications/TrainerCheckIn'
 import { NewWorkoutToast } from './components/notifications/NewWorkoutToast'
+import { AdminMessageToast } from './components/notifications/AdminMessageToast'
 import { LoginScreen } from './modules/auth/LoginScreen'
 import { Onboarding } from './modules/member/onboarding/Onboarding'
 
@@ -141,6 +142,7 @@ function AppRouter() {
  <NotificationScheduler />
  {isMemberView && <TrainerCheckIn />}
  {isMemberView && <NewWorkoutToast />}
+ {isMemberView && <AdminMessageToast />}
  {!isAdminView && (
  <FloatingAssistant
    onOpenMentalCoach={() => setPage('mind')}

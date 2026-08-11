@@ -31,7 +31,7 @@ export function Team() {
  <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>שימור</div>
  </div>
  <div style={{ padding: 10, background: t.color.bgSoft, borderRadius: t.radius.sm }}>
- <div style={{ fontSize: t.font.xl, fontWeight: 800, color: t.color.info }}>{m.rating}⭐</div>
+ <div style={{ fontSize: t.font.xl, fontWeight: 800, color: t.color.info }}>{m.rating}</div>
  <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>דירוג</div>
  </div>
  </div>

@@ -183,7 +183,7 @@ export function BarcodeScanner({ onDetected, onClose }) {
         }}>
           {status === 'init' && (isRTL ? 'מפעיל מצלמה…' : 'Starting camera…')}
           {status === 'streaming' && (isRTL ? 'מכוון את הברקוד לתוך המסגרת' : 'Point the barcode into the frame')}
-          {status === 'detected' && (isRTL ? 'נמצא ברקוד ✓' : 'Barcode found ✓')}
+          {status === 'detected' && (isRTL ? 'נמצא ברקוד' : 'Barcode found')}
         </div>
       </div>
 

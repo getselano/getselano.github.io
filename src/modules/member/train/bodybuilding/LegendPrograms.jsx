@@ -429,7 +429,7 @@ function ProgramDetail({ program: p, onClose }) {
             style={{ background: adopted ? '#4a9c6a' : undefined }}
           >
             {adopted
-              ? '✓ אומץ ל־Routines שלי'
+              ? 'אומץ ל־Routines שלי'
               : `אמץ ל־${p.sessions.length} Routines חדשים`}
           </Button>
         </div>

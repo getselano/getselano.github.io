@@ -3,6 +3,7 @@ import { t } from '../../theme/tokens'
 import { useApp } from '../../store/AppStore'
 import { useAuth } from '../../auth/AuthContext'
 import { useI18n } from '../../i18n/i18n'
+import { AdminMessageBell } from '../notifications/AdminMessageBell'
 
 const MEMBER_NAV_KEYS = [
  { key:'home', i18n:'nav.home' },
@@ -108,7 +109,7 @@ export function Shell({ page, setPage, children }) {
 
  {/* Main */}
  <main style={{ flex: 1, minWidth: 0, display:'flex', flexDirection:'column'}}>
- <TopBar page={nav.find(n => n.key === page)} isAdmin={isAdmin} onMenu={() => setMobileOpen(true)} />
+ <TopBar page={nav.find(n => n.key === page)} isAdmin={isAdmin} isAdminView={isAdminView} onMenu={() => setMobileOpen(true)} />
  <div className="hfos-content"style={{ padding: t.space.xl, maxWidth: 1400, width:'100%', margin:'0 auto', flex: 1 }}>
  {children}
  </div>
@@ -314,7 +315,7 @@ function NavItem({ item, active, onClick }) {
  )
 }
 
-function TopBar({ page, isAdmin, onMenu }) {
+function TopBar({ page, isAdmin, isAdminView, onMenu }) {
  const { isRTL } = useI18n()
  return (
  <header className="hfos-topbar"style={{
@@ -349,6 +350,7 @@ function TopBar({ page, isAdmin, onMenu }) {
  </div>
  </div>
  <div style={{ display:'flex', alignItems:'center', gap: 12 }}>
+ {!isAdminView && <AdminMessageBell />}
  <button style={{
  background: t.color.bgSoft, border:`1px solid ${t.color.border}`, borderRadius: t.radius.pill,
  padding:'5px 12px', color: t.color.text, cursor:'pointer', fontFamily:'inherit', fontSize: t.font.xs,

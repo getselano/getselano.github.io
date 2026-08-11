@@ -140,7 +140,7 @@ export function SignaturePad({ onChange, height = 180 }) {
           color: hasSignature ? '#4a9c6a' : t.color.silver2, fontWeight: 600,
           textTransform: 'uppercase',
         }}>
-          {hasSignature ? (isRTL ? '✓ נחתם' : '✓ Signed') : (isRTL ? 'ממתין לחתימה' : 'Awaiting signature')}
+          {hasSignature ? (isRTL ? 'נחתם' : 'Signed') : (isRTL ? 'ממתין לחתימה' : 'Awaiting signature')}
         </div>
         <button
           type="button"

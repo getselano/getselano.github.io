@@ -71,8 +71,8 @@ export function TrainerCheckIn() {
 
   const firstName = pickFirstName(state?.profile, user)
   const greeting = firstName
-    ? (isRTL ? `היי ${firstName} 👋` : `Hey ${firstName} 👋`)
-    : (isRTL ? 'היי 👋' : 'Hey 👋')
+    ? (isRTL ? `היי ${firstName}` : `Hey ${firstName}`)
+    : (isRTL ? 'היי' : 'Hey')
 
   return (
     <div style={{

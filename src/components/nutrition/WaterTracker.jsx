@@ -48,7 +48,7 @@ export function WaterTracker({ compact = false }) {
             color: done ? '#4a9c6a' : '#4a7fc7', fontWeight: 700,
           }}>
             {done
-              ? (isRTL ? '✓ יעד הושג' : '✓ Goal reached')
+              ? (isRTL ? 'יעד הושג' : 'Goal reached')
               : (isRTL ? 'מים היום' : 'Water today')}
           </div>
           <div style={{ fontSize: compact ? 20 : 24, fontWeight: 800, color: t.color.ink, marginTop: 2, letterSpacing: '-0.01em' }}>

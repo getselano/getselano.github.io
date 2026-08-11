@@ -66,7 +66,7 @@ function RecentTab({ recent, onAdd }) {
  if (!recent.length) {
  return (
  <EmptyState
- icon="⭐"
+ icon=""
  title="עדיין לא רשמת מרשמים"
  subtitle="לאחר שתוסיף כמה ארוחות, הן יופיעו כאן להוספה מהירה בקליק אחד"
  />
@@ -93,7 +93,7 @@ function RecentTab({ recent, onAdd }) {
  <div style={{ fontWeight: 600, display:'flex', gap: 8, alignItems:'center'}}>
  {m.name}
  <Badge color={t.color.textDim}>{m.grams}ג׳</Badge>
- {m.count > 2 && <Badge color={t.color.gold}>⭐ נאכל {m.count}x</Badge>}
+ {m.count > 2 && <Badge color={t.color.gold}>נאכל {m.count}x</Badge>}
  </div>
  <div style={{ fontSize: t.font.xs, color: t.color.textDim, marginTop: 2 }}>
  {Math.round(m.kcal)} קק״ל · חלבון {Math.round(m.p)}ג׳ · פחמימות {Math.round(m.c)}ג׳ · שומן {Math.round(m.f)}ג׳

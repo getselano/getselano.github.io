@@ -307,7 +307,7 @@ export function RoutineRunner({ routine, open, onClose }) {
      background: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.5)',
      borderRadius: t.radius.sm, color: '#ff8080', fontSize: 11,
      fontFamily: t.font.family.mono, letterSpacing: '0.06em',
-   }}>⚠ סופרסט {ssBadge.letter}: התרגילים לא ברצף. תקן ב־Builder כדי להריץ נכון.</div>
+   }}>שים לב · סופרסט {ssBadge.letter}: התרגילים לא ברצף. תקן ב־Builder כדי להריץ נכון.</div>
  )}
  <Card style={{
  marginBottom: t.space.md,
@@ -412,7 +412,7 @@ export function RoutineRunner({ routine, open, onClose }) {
  }}>
  <span>Set</span>
  <span>Kg</span>
- <span style={{ color: t.color.gold, fontWeight: 800, letterSpacing:'0.16em' }}>Reps ★</span>
+ <span style={{ color: t.color.gold, fontWeight: 800, letterSpacing:'0.16em' }}>Reps</span>
  <span>Plate</span>
  <span>·</span>
  </div>

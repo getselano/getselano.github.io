@@ -572,7 +572,7 @@ function ManualBuilder({ routine, seedExercises, open, onClose, onBack }) {
           borderRadius: t.radius.sm, padding: 12, marginBottom: t.space.md,
           color: '#4a9c6a', fontSize: t.font.sm,
         }}>
-          ✓ נבנה אוטומטית — ערוך משקלים ותרגילים לפי הצורך
+          נבנה אוטומטית — ערוך משקלים ותרגילים לפי הצורך
         </div>
       )}
 
@@ -582,7 +582,7 @@ function ManualBuilder({ routine, seedExercises, open, onClose, onBack }) {
           background: t.color.bgSoft, border: `1px solid ${t.color.border}`,
           borderRadius: t.radius.sm, cursor: 'pointer',
         }} onClick={() => {
-          const emojis = ['💪', '🔥', '⚡', '🏋️', '🎯', '🚀', '💥']
+          const emojis = ['']
           const idx = emojis.indexOf(emoji)
           setEmoji(emojis[(idx + 1) % emojis.length])
         }}>{emoji || '＋'}</button>

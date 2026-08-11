@@ -1,16 +1,18 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { t } from '../../../theme/tokens'
 import { Card } from '../../../components/ui/UI'
 import { Talk } from '../talk/Talk'
 import { Reminders } from '../reminders/Reminders'
 import { Profile } from '../profile/Profile'
 import { APP_GUIDES } from '../../../data/guides/appGuides'
+import { SendMessageTab } from './SendMessageTab'
+import { useAuth } from '../../../auth/AuthContext'
 
 // מרכז בקרה — a single hub combining Guide + Profile + Reminders + Talk.
 // Cleans up the sidebar (one item instead of four) and gives new members
 // a proper starting point with the guide sub-tab.
 
-const TABS = [
+const BASE_TABS = [
   { key:'guide',     he:'הסבר על המערכת' },
   { key:'profile',   he:'פרופיל' },
   { key:'reminders', he:'תזכורות' },
@@ -18,6 +20,11 @@ const TABS = [
 ]
 
 export function ControlCenter({ go }) {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+  const TABS = useMemo(() => (
+    isAdmin ? [...BASE_TABS, { key:'send', he:'שלח הודעה' }] : BASE_TABS
+  ), [isAdmin])
   const [tab, setTab] = useState('guide')
   return (
     <div style={{ display:'grid', gap: 16 }}>
@@ -67,6 +74,7 @@ export function ControlCenter({ go }) {
         {tab === 'profile'   && <Profile go={go} />}
         {tab === 'reminders' && <Reminders />}
         {tab === 'talk'      && <Talk />}
+        {tab === 'send' && isAdmin && <SendMessageTab />}
       </div>
     </div>
   )

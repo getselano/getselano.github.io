@@ -213,7 +213,7 @@ export function TrainerGenerator() {
  <>
  <Card style={{ marginBottom: t.space.md, background: `${t.color.gold}11`, borderColor: t.color.gold }}>
  <div style={{ display:'flex', gap: 12, alignItems:'center'}}>
- <div style={{ fontSize: 40 }}>⚡</div>
+ <div style={{ fontSize: 40 }}></div>
  <div>
  <div style={{ fontWeight: 700, color: t.color.text, marginBottom: 4 }}>מחולל תוכנית אישית</div>
  <div style={{ fontSize: t.font.sm, color: t.color.textDim }}>

@@ -87,7 +87,7 @@ export function Goals({ go }) {
  textAlign: 'center',
  fontSize: 14,
  }}>
- ✔ המטרה נשמרה: {active.title}
+ המטרה נשמרה: {active.title}
  </div>
  )}
  {/* Hero card */}

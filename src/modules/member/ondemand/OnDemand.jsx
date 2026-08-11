@@ -39,7 +39,7 @@ export function OnDemand() {
  <Badge color={t.color.gold}> ON-DEMAND</Badge>
  <h1 style={{ fontSize: t.font.hero, fontWeight: 900, marginTop: 10, marginBottom: 6 }}>{isRTL ? 'אימונים בבית — בקליק' : 'Home workouts — one click away'}</h1>
  <p style={{ color: t.color.textDim, fontSize: t.font.md, maxWidth: 520, lineHeight: 1.5 }}>
- {VIDEOS.length} {isRTL ? 'סרטוני אימון בבית: פונקציונאלי, יוגה, פילאטיס, כוח משקל גוף, קרוספיט, וניידות.' : 'home workout videos: functional, yoga, pilates, bodyweight strength, CrossFit, and mobility.'}
+ {VIDEOS.length} {isRTL ? 'סרטוני אימון בבית: פונקציונאלי, יוגה, פילאטיס, כוח משקל גוף, קרוספיט, ו־MOBILITY.' : 'home workout videos: functional, yoga, pilates, bodyweight strength, CrossFit, and MOBILITY.'}
  {isRTL ? ' בחר קטגוריה, אורך, ורמה — ותצא לדרך.' : ' Pick a category, length, and level — and go.'}
  </p>
  </div>
@@ -85,6 +85,36 @@ export function OnDemand() {
  </Select>
  </div>
  </Card>
+
+ {/* Creator spotlight — BOHO BEAUTIFUL (yoga only) */}
+ {cat === 'yoga'&& (
+ <Card style={{
+ padding: 18, background: `linear-gradient(135deg, ${t.color.bgCard} 0%, #2a1a1e 100%)`,
+ border: `1px solid ${t.color.gold}55`,
+ display:'flex', justifyContent:'space-between', alignItems:'center', gap: 14, flexWrap:'wrap',
+ }}>
+ <div style={{ flex:'1 1 260px', minWidth: 240 }}>
+ <div style={{
+ fontFamily: t.font.family.mono, fontSize: 10, letterSpacing:'0.28em',
+ color: t.color.gold, fontWeight: 700, textTransform:'uppercase', marginBottom: 6,
+ }}>Creator Spotlight</div>
+ <div style={{
+ fontFamily: t.font.family.display, fontSize: 20, fontWeight: 700,
+ color: t.color.white, marginBottom: 4,
+ }}>BOHO BEAUTIFUL</div>
+ <div style={{ color: t.color.textDim, fontSize: t.font.sm, lineHeight: 1.5 }}>
+ {isRTL
+ ? 'מאגר יוגה עשיר של יוליאנה ומארק ספיצ׳ק — Vinyasa, Yin, HIIT Yoga ועוד מאות סרטונים חינם ביוטיוב.'
+ : 'A rich yoga catalogue by Juliana & Mark Spicoluk — Vinyasa, Yin, HIIT Yoga and hundreds more free on YouTube.'}
+ </div>
+ </div>
+ <a href="https://www.youtube.com/@bohobeautiful/videos"target="_blank" rel="noopener noreferrer"style={{
+ padding:'12px 22px', background: t.color.gold, color:'#0d0d14',
+ borderRadius: t.radius.md, textDecoration:'none', fontWeight: 700, fontSize: t.font.sm,
+ whiteSpace:'nowrap',
+ }}>{isRTL ? 'פתח את הערוץ המלא' : 'Open full channel'}</a>
+ </Card>
+ )}
 
  {/* Grid */}
  {filtered.length === 0 && (

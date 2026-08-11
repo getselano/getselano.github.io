@@ -108,7 +108,7 @@ function Today() {
  {recentMeals.length > 0 && (
  <Card style={{ background: `linear-gradient(135deg, ${t.color.bgCard} 0%, ${t.color.bgElevated} 100%)`, border: `1px solid ${t.color.gold}`, overflow: 'hidden' }}>
  <SectionHeader
- title={isRTL ? '⭐ המרשמים שלי' : '⭐ My favorites'}
+ title={isRTL ? 'המרשמים שלי' : 'My favorites'}
  subtitle={isRTL ? 'קליק אחד כדי להוסיף שוב' : 'One click to add again'}
  action={<Badge color={t.color.gold}>{recentMeals.length}</Badge>}
  />
@@ -580,8 +580,8 @@ function BloodTest() {
    }}>
      <div style={{ fontSize: t.font.sm, color: t.color.textDim, marginBottom: 10, lineHeight: 1.5 }}>
        {isRTL
-         ? '📎 העלה תמונה/PDF של בדיקת הדם ונמלא לך את הערכים אוטומטית. הקובץ נשלח למנוע קריאה חכם — לא נשמר אצלנו.'
-         : '📎 Upload a photo/PDF of your blood test and we\'ll fill in the values automatically. The file is sent to our AI reader — not stored.'}
+         ? 'העלה תמונה/PDF של בדיקת הדם ונמלא לך את הערכים אוטומטית. הקובץ נשלח למנוע קריאה חכם — לא נשמר אצלנו.'
+         : 'Upload a photo/PDF of your blood test and we\'ll fill in the values automatically. The file is sent to our AI reader — not stored.'}
      </div>
      <label style={{ display:'inline-block', cursor: uploadState.status === 'loading' ? 'wait' : 'pointer' }}>
        <input
@@ -601,7 +601,7 @@ function BloodTest() {
        }}>
          {uploadState.status === 'loading'
            ? (isRTL ? '⏳ קורא…' : '⏳ Reading…')
-           : (isRTL ? '📷 העלה מסמך / צלם' : '📷 Upload / Photo')}
+           : (isRTL ? 'העלה מסמך / צלם' : 'Upload / Photo')}
        </span>
      </label>
      {uploadState.message && (

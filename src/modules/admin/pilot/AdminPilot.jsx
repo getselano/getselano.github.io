@@ -37,9 +37,9 @@ export function AdminPilot() {
     setBusy(null)
     if (res.ok) {
       if (res.emailSent) {
-        alert(`✔ ${res.name || 'המשתמש'} שוחרר.\nמייל עם קישור כניסה נשלח ל־${res.email}.`)
+        alert(`${res.name || 'המשתמש'} שוחרר.\nמייל עם קישור כניסה נשלח ל־${res.email}.`)
       } else {
-        alert(`✔ ${res.name || 'המשתמש'} שוחרר.\n\nהערה: שליחת המייל האוטומטי נכשלה${res.emailError ? ` (${res.emailError})` : ''}.\nניתן לשלוח מייל ידני דרך כפתור "מייל" ברשימת המתאמנים.`)
+        alert(`${res.name || 'המשתמש'} שוחרר.\n\nהערה: שליחת המייל האוטומטי נכשלה${res.emailError ? ` (${res.emailError})` : ''}.\nניתן לשלוח מייל ידני דרך כפתור "מייל" ברשימת המתאמנים.`)
       }
       await load()
     } else {
@@ -59,7 +59,7 @@ export function AdminPilot() {
     const res = await sendAccessLink(row.email)
     setBusy(null)
     if (res.ok) {
-      alert(`✔ קישור כניסה נשלח ל־${row.email}`)
+      alert(`קישור כניסה נשלח ל־${row.email}`)
     } else {
       alert('שגיאה בשליחה: ' + (res.error || 'לא ידוע'))
     }
