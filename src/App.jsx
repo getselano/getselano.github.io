@@ -23,6 +23,8 @@ import { Calendar } from './modules/member/calendar/Calendar'
 import { Store } from './modules/member/store/Store'
 import { Personal } from './modules/member/personal/Personal'
 import { OnDemand } from './modules/member/ondemand/OnDemand'
+import { Community } from './modules/member/community/Community'
+import { NewSharedWorkoutToast } from './components/notifications/NewSharedWorkoutToast'
 import { Profile } from './modules/member/profile/Profile'
 import { Reminders } from './modules/member/reminders/Reminders'
 import { Talk } from './modules/member/talk/Talk'
@@ -110,6 +112,7 @@ function AppRouter() {
  store: <Store />,
  personal: <Personal />,
  ondemand: <OnDemand />,
+ community: <Community />,
  reminders: <Reminders />,
  talk: <Talk />,
  profile: <Profile go={setPage} />,
@@ -143,6 +146,7 @@ function AppRouter() {
  {isMemberView && <TrainerCheckIn />}
  {isMemberView && <NewWorkoutToast />}
  {isMemberView && <AdminMessageToast />}
+ {isMemberView && <NewSharedWorkoutToast onOpenCommunity={() => setPage('community')} />}
  {!isAdminView && (
  <FloatingAssistant
    onOpenMentalCoach={() => setPage('mind')}

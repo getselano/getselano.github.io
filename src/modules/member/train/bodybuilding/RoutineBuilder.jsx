@@ -6,6 +6,7 @@ import { EXERCISES, EXERCISE_BY_ID, EQUIPMENT, MUSCLE_GROUPS } from '../../../..
 import { ExerciseGuideButton } from '../../../../components/train/ExerciseGuidePopover'
 import { modeFromState, activeGoal, TRAINING_MODES } from '../../../../data/trainingMode'
 import { FreeformBuilder } from './FreeformBuilder'
+import { PublishWorkoutButton } from '../../../../components/community/PublishWorkoutButton'
 
 // ─── Level & goal presets ─────────────────────────────────
 // 4 levels, each layers on intensifiers (supersets, dropsets)
@@ -629,6 +630,23 @@ function ManualBuilder({ routine, seedExercises, open, onClose, onBack }) {
         <Button variant="ghost" onClick={onClose} style={{ flex: 1, justifyContent: 'center' }}>ביטול</Button>
         <Button variant="primary" onClick={handleSave} style={{ flex: 2, justifyContent: 'center' }}>שמור Routine</Button>
       </div>
+
+      {name.trim() && exercises.length > 0 && (
+        <div style={{
+          marginTop: 12, padding: 12,
+          background: t.color.bgSoft, borderRadius: t.radius.sm,
+          border: `1px dashed ${t.color.gold}55`,
+          display:'flex', gap: 10, alignItems:'center', flexWrap:'wrap',
+        }}>
+          <div style={{ flex: 1, minWidth: 180, fontSize: 12, color: t.color.silver1 }}>
+            רוצה שהתבנית הזו תיראה בפיד הקהילה? כולם יוכלו לצפות + לתת לייק ותגובה.
+          </div>
+          <PublishWorkoutButton
+            workoutType="routine"
+            workoutData={{ name: name.trim(), exercises }}
+          />
+        </div>
+      )}
 
       {addingExercise && (
         <ExercisePicker

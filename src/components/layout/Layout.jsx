@@ -15,6 +15,7 @@ const MEMBER_NAV_KEYS = [
  { key:'mind', i18n:'nav.mind' },
  { key:'calendar', i18n:'nav.calendar' },
  { key:'ondemand', i18n:'nav.ondemand' },
+ { key:'community', i18n:'nav.community' },
  { key:'store', i18n:'nav.store' },
  { key:'personal', i18n:'nav.personal' },
  { key:'control', i18n:'nav.control' },

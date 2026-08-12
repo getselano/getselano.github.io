@@ -3,6 +3,7 @@ import { t } from '../../../../theme/tokens'
 import { Card, Button, Badge } from '../../../../components/ui/UI'
 import { FORMATS } from '../../../../data/crossfit/formats'
 import { getSubs } from '../../../../data/crossfit/substitutions'
+import { PublishWorkoutButton } from '../../../../components/community/PublishWorkoutButton'
 
 // WOD Display — the monospace "written prescription"panel, wod-gpt style.
 // Includes copy-to-clipboard and video-tips expander.
@@ -88,6 +89,7 @@ export function WodDisplay({ wod, onStart, onRegenerate, onShowVideos }) {
  {onShowVideos && (
  <Button variant="ghost" onClick={onShowVideos}> דגשי ביצוע</Button>
  )}
+ <PublishWorkoutButton workoutType="wod" workoutData={wod} />
  </div>
  </Card>
  )
