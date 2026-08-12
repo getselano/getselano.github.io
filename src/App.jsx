@@ -53,7 +53,28 @@ import { AdminFeedback } from './modules/admin/feedback/AdminFeedback'
 function AppRouter() {
  const { user, effectiveRole, loading, passwordRecovery } = useAuth()
  const { state, setRole, completeOnboarding } = useApp()
- const [page, setPage] = useState('home')
+ // Deep-link support: if the URL has ?workout=<id>, start on the community
+ // tab so the Community screen can auto-scroll to that card. It clears the
+ // param itself after consuming it.
+ const initialPage = (() => {
+   try {
+     const url = new URL(window.location.href)
+     if (url.searchParams.get('workout')) return 'community'
+   } catch {}
+   return 'home'
+ })()
+ const [page, setPage] = useState(initialPage)
+
+ // If a member logs in and there's a pending ?workout= param, route to community.
+ useEffect(() => {
+   if (!user || effectiveRole === 'admin') return
+   try {
+     const url = new URL(window.location.href)
+     if (url.searchParams.get('workout') && page !== 'community') {
+       setPage('community')
+     }
+   } catch {}
+ }, [user?.id, effectiveRole])
 
  // Sync auth's effective role → app role (must run every render regardless of user)
  useEffect(() => {

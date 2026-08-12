@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { t } from '../../../theme/tokens'
 import { Card, Button, EmptyState } from '../../../components/ui/UI'
 import { SLoader } from '../../../components/ui/SLoader'
@@ -7,6 +7,7 @@ import {
   listFeed, toggleLike, listComments, addComment,
   deleteComment, deleteWorkout, subscribeToFeed,
 } from '../../../services/sharedWorkouts'
+import { printWorkoutAsPdf, shareWorkoutLink, openWhatsApp } from '../../../utils/workoutExport'
 
 // Community feed screen. Loads recent shared workouts, wires realtime updates,
 // exposes like + comments + expand-to-full-workout per card.
@@ -16,6 +17,7 @@ export function Community() {
   const isAdmin = user?.role === 'admin'
   const [feed, setFeed] = useState(null)
   const [expanded, setExpanded] = useState({}) // id → boolean
+  const scrollTargetRef = useRef(null)
 
   const load = async () => {
     const rows = await listFeed(user?.id)
@@ -31,6 +33,24 @@ export function Community() {
     })
     return unsub
   }, [user?.id])
+
+  // Deep-link support — ?workout=<id> auto-expands + scrolls to the card.
+  // We ONLY consume the param once (clear it) so a refresh doesn't hijack.
+  useEffect(() => {
+    if (!feed) return
+    const url = new URL(window.location.href)
+    const targetId = url.searchParams.get('workout')
+    if (!targetId) return
+    // Wait a beat for cards to render, then find + scroll
+    setExpanded(prev => ({ ...prev, [targetId]: true }))
+    setTimeout(() => {
+      const el = document.getElementById(`workout-${targetId}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      // Clean the URL so we don't re-trigger on subsequent renders
+      url.searchParams.delete('workout')
+      window.history.replaceState({}, '', url.toString())
+    }, 200)
+  }, [feed])
 
   const handleLike = async (workout) => {
     // Optimistic UI
@@ -99,8 +119,44 @@ function FeedCard({ workout, currentUser, isAdmin, expanded, onToggleExpand, onL
   const [loadingComments, setLoadingComments] = useState(false)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [shareToast, setShareToast] = useState('')
   const canDelete = isAdmin || workout.user_id === currentUser?.id
   const isMine = workout.user_id === currentUser?.id
+
+  const handlePdf = () => {
+    printWorkoutAsPdf({
+      title: workout.workout_data?.title || workout.workout_data?.name || 'אימון',
+      type: workout.workout_type,
+      data: workout.workout_data,
+      publisher: workout.user_name,
+      publishedAt: workout.created_at,
+    })
+  }
+
+  const handleShare = async () => {
+    const res = await shareWorkoutLink({
+      workoutId: workout.id,
+      title: workout.workout_data?.title || workout.workout_data?.name || 'אימון בסלאנו',
+      prefix: `${workout.user_name || 'מתאמן/ת'} משתף/ת אימון בסלאנו`,
+    })
+    if (res.method === 'native') {
+      // Share sheet handled everything visibly, no toast needed unless aborted
+      if (!res.aborted && !res.ok) setShareToast('שיתוף נכשל')
+    } else if (res.method === 'clipboard' && res.ok) {
+      setShareToast('הקישור הועתק ✓')
+    } else {
+      setShareToast('לא הצלחתי להעתיק. נסה WhatsApp.')
+    }
+    setTimeout(() => setShareToast(''), 2500)
+  }
+
+  const handleWhatsApp = () => {
+    openWhatsApp({
+      workoutId: workout.id,
+      title: workout.workout_data?.title || workout.workout_data?.name,
+      prefix: `${workout.user_name || 'מתאמן/ת'} משתף/ת אימון בסלאנו`,
+    })
+  }
 
   const loadComments = async () => {
     setLoadingComments(true)
@@ -139,7 +195,7 @@ function FeedCard({ workout, currentUser, isAdmin, expanded, onToggleExpand, onL
   }
 
   return (
-    <Card style={{ padding: 16 }}>
+    <Card id={`workout-${workout.id}`} style={{ padding: 16, scrollMarginTop: 80 }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap: 10, marginBottom: 12 }}>
         <div style={{
@@ -175,11 +231,21 @@ function FeedCard({ workout, currentUser, isAdmin, expanded, onToggleExpand, onL
         expanded={expanded}
       />
 
-      {/* Toggle full view */}
-      <div style={{ display:'flex', gap: 8, marginTop: 12 }}>
+      {/* Toggle full view + export/share */}
+      <div style={{ display:'flex', gap: 8, marginTop: 12, flexWrap:'wrap' }}>
         <Button variant="ghost" size="sm" onClick={onToggleExpand}>
           {expanded ? 'סגור' : 'לאימון המלא'}
         </Button>
+        <Button variant="ghost" size="sm" onClick={handlePdf}>PDF</Button>
+        <Button variant="ghost" size="sm" onClick={handleShare}>שתף קישור</Button>
+        <Button variant="ghost" size="sm" onClick={handleWhatsApp}>WhatsApp</Button>
+        {shareToast && (
+          <span style={{
+            padding:'6px 10px', borderRadius: t.radius.sm,
+            background: `${t.color.success}18`, color: t.color.success,
+            border: `1px solid ${t.color.success}44`, fontSize: 11,
+          }}>{shareToast}</span>
+        )}
       </div>
 
       {/* Actions */}
