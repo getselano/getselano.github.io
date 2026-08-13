@@ -8,6 +8,7 @@ export const CATEGORIES = [
   { id: 'bodyweight', label: 'כוח משקל גוף',   icon: '', color: '#c8a84b' },
   { id: 'crossfit',   label: 'קרוספיט',         icon: '', color: '#e05a5a' },
   { id: 'mobility',   label: 'MOBILITY',  icon: '', color: '#a05ae0' },
+  { id: 'abs',        label: 'ABS',       icon: '', color: '#e05aac' },
 ]
 
 export const VIDEOS = [
@@ -135,6 +136,23 @@ export const VIDEOS = [
   { id:'mb13', cat:'mobility', title:'ניידות לרצים', by:'FitnessFAQs', duration:12, level:'קל', ytId:'j7rKKpwdXNE' },
   { id:'mb14', cat:'mobility', title:'Deep Stretch Flow · 20 min', by:'Boho Beautiful', duration:20, level:'קל', ytId:'0KZFuJqL_1c' },
   { id:'mb15', cat:'mobility', title:'עמוד שדרה חופשי', by:'GMB Fitness', duration:15, level:'קל', ytId:'nO-D6ce27M0' },
+
+  // ── ABS · אימוני בטן מגוונים ──
+  { id:'abs1',  cat:'abs', title:'10 דק׳ בטן אינטנסיבי · יומי', by:'Chloe Ting', duration:10, level:'בינוני', ytId:'AnYl6Nk9GOA' },
+  { id:'abs2',  cat:'abs', title:'V-Cut Abs — התוותיה מוגדרת', by:'Athlean-X', duration:12, level:'מתקדם', ytId:'2L2lnxIcNmo' },
+  { id:'abs3',  cat:'abs', title:'בטן תחתונה — הכי קשה', by:'FitnessBlender', duration:15, level:'בינוני', ytId:'jK6X6iiuAvI' },
+  { id:'abs4',  cat:'abs', title:'6 Pack Abs · 8 min home', by:'MadFit', duration:8, level:'בינוני', ytId:'axPBz2NkzWo' },
+  { id:'abs5',  cat:'abs', title:'ליבה יציבה — אימון פלאנקים', by:'Pamela Reif', duration:12, level:'בינוני', ytId:'K56Z12XNQ5c' },
+  { id:'abs6',  cat:'abs', title:'Standing Abs · בלי לשכב', by:'HeatherRobertson', duration:15, level:'קל', ytId:'ipsu3o0i44Q' },
+  { id:'abs7',  cat:'abs', title:'Beach Abs · שריפת שומן + בטן', by:'GrowingAnnanas', duration:20, level:'בינוני', ytId:'oAPCPjnU1wA' },
+  { id:'abs8',  cat:'abs', title:'בטן למתחילים · 10 דק׳', by:'MadFit', duration:10, level:'קל', ytId:'jpizoIRBTAI' },
+  { id:'abs9',  cat:'abs', title:'Sixpack HIIT · לחיטוב מהיר', by:'Chloe Ting', duration:15, level:'מתקדם', ytId:'2L2lnxIcNmo' },
+  { id:'abs10', cat:'abs', title:'Core Killer · אלכסונים + בטן', by:'FitnessBlender', duration:18, level:'מתקדם', ytId:'AnYl6Nk9GOA' },
+  { id:'abs11', cat:'abs', title:'Dumbbell Abs · עם משקולת', by:'Athlean-X', duration:12, level:'בינוני', ytId:'akZ-GxpEV2s' },
+  { id:'abs12', cat:'abs', title:'בטן פילאטיס · אלגנטי', by:'Move With Nicole', duration:15, level:'קל', ytId:'K56Z12XNQ5c' },
+  { id:'abs13', cat:'abs', title:'Ab Ripper · 5 דקות של אש', by:'Athlean-X', duration:5, level:'מתקדם', ytId:'AnYl6Nk9GOA' },
+  { id:'abs14', cat:'abs', title:'בטן + גב תחתון — ליבה שלמה', by:'HeatherRobertson', duration:20, level:'בינוני', ytId:'jK6X6iiuAvI' },
+  { id:'abs15', cat:'abs', title:'6 Pack Every Day · כל בוקר', by:'Pamela Reif', duration:8, level:'בינוני', ytId:'axPBz2NkzWo' },
 ]
 
 export function videosByCat(catId) {
