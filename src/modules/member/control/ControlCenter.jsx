@@ -42,7 +42,7 @@ export function ControlCenter({ go }) {
       </div>
 
       {/* Tabs */}
-      <div style={{
+      <div className="hfos-hscroll" style={{
         display:'flex', gap: 4, overflowX:'auto',
         borderBottom:`1px solid ${t.color.hairline}`, paddingBottom: 2,
       }}>

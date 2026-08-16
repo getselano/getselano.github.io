@@ -7,6 +7,7 @@ import { PROGRAM_BY_ID } from '../../../../data/bodybuilding/programs'
 import { EXERCISE_BY_ID } from '../../../../data/bodybuilding/exercises'
 import { RoutineBuilder } from './RoutineBuilder'
 import { RoutineRunner } from './RoutineRunner'
+import { PublishWorkoutButton } from '../../../../components/community/PublishWorkoutButton'
 
 // User's saved routines + system routines from active program.
 export function MyRoutines() {
@@ -137,12 +138,39 @@ function RoutineCard({ routine, isSystem, onRun, onEdit, onDelete }) {
  )}
  </div>
  <div style={{ display:'flex', gap: 8, marginTop: 12, flexWrap:'wrap' }}>
- <Button variant="primary"size="sm"onClick={onRun}>▶ התחל אימון</Button>
- <Button variant="ghost"size="sm"onClick={onEdit}> ערוך</Button>
- {onDelete && <Button variant="danger"size="sm" onClick={onDelete}> מחק</Button>}
+ <Button variant="primary"size="sm"onClick={onRun}>התחל אימון</Button>
+ <Button variant="ghost"size="sm"onClick={onEdit}>ערוך</Button>
+ {onDelete && <Button variant="danger"size="sm" onClick={onDelete}>מחק</Button>}
+ <span style={{ marginInlineStart:'auto' }}><PublishToCommunityChip routine={routine} /></span>
  </div>
  </div>
  </div>
  </Card>
  )
+}
+
+// Compact publish chip — white background, wine-red text, matches the brand.
+// Wraps the shared PublishWorkoutButton but styles it as a subtle chip so
+// it sits comfortably next to the primary "Start workout" action.
+function PublishToCommunityChip({ routine }) {
+  const data = { name: routine.name, exercises: routine.exercises || [] }
+  return (
+    <span style={{ display:'inline-flex' }} className="hfos-publish-chip">
+      <PublishWorkoutButton workoutType="routine" workoutData={data} buttonLabel="פרסם לקהילה" />
+      <style>{`
+        .hfos-publish-chip button {
+          background: #fff !important;
+          color: #6f1622 !important;
+          border-color: #6f1622 !important;
+          font-weight: 700 !important;
+        }
+        .hfos-publish-chip button:hover {
+          background: #f6f4ee !important;
+        }
+        .hfos-publish-chip button[disabled] {
+          opacity: 0.7;
+        }
+      `}</style>
+    </span>
+  )
 }

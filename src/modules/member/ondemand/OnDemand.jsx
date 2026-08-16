@@ -46,7 +46,7 @@ export function OnDemand() {
  </Card>
 
  {/* Category chips */}
- <div style={{ display:'flex', gap: 6, overflowX:'auto', paddingBottom: 4 }}>
+ <div className="hfos-hscroll" style={{ display:'flex', gap: 6, overflowX:'auto', paddingBottom: 4 }}>
  <button onClick={() => setCat('all')} style={{
  padding:'10px 16px', borderRadius: 999,
  background: cat === 'all'? t.color.gold : t.color.bgSoft,

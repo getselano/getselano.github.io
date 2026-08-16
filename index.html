@@ -63,6 +63,28 @@
       ::-webkit-scrollbar { width: 4px; }
       ::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 2px; }
 
+      /* Horizontal scroll containers — give them a visible thin scrollbar and
+         a subtle fade at the trailing edge so users see there's more content
+         off-screen. Add the .hfos-hscroll class to any element that scrolls
+         horizontally on mobile. */
+      .hfos-hscroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(199,64,80,0.35) transparent;
+        -webkit-mask-image: linear-gradient(to left,
+          rgba(0,0,0,0.35) 0, rgba(0,0,0,1) 24px, rgba(0,0,0,1) calc(100% - 24px), rgba(0,0,0,0.35) 100%);
+                mask-image: linear-gradient(to left,
+          rgba(0,0,0,0.35) 0, rgba(0,0,0,1) 24px, rgba(0,0,0,1) calc(100% - 24px), rgba(0,0,0,0.35) 100%);
+      }
+      .hfos-hscroll::-webkit-scrollbar { height: 4px; width: 4px; }
+      .hfos-hscroll::-webkit-scrollbar-track { background: transparent; }
+      .hfos-hscroll::-webkit-scrollbar-thumb {
+        background: rgba(199,64,80,0.35);
+        border-radius: 999px;
+      }
+      .hfos-hscroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(199,64,80,0.6);
+      }
+
       /* Suppress Chrome/Safari autofill styling that overrides our dark inputs.
          Without this, saved emails render on WHITE background with red hints
          and a stray '{}' autofill glyph — which looked like a real error. */

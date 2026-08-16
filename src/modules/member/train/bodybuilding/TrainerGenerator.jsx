@@ -10,6 +10,7 @@ import { activeGoal, modeFromState, TRAINING_MODES } from '../../../../data/trai
 import {
   parseProgramRequest, MUSCLE_HE, GOAL_HE, EQUIPMENT_HE, LEVEL_HE,
 } from '../../../../utils/nlWorkoutParser'
+import { RoutineBuilder } from './RoutineBuilder'
 
 // Wizard that generates a personalised program. If the user already
 // has an active goal from onboarding we skip the goal question and
@@ -32,7 +33,8 @@ export function TrainerGenerator() {
  const [result, setResult] = useState(null)
  const [detailOpen, setDetailOpen] = useState(false)
  const [overrideGoal, setOverrideGoal] = useState(false)
- const [inputMode, setInputMode] = useState('wizard') // 'wizard' | 'freeform'
+ // null = show the 3-method picker · 'wizard' | 'freeform' | 'manual' when chosen
+ const [inputMode, setInputMode] = useState(null)
  const [freeformText, setFreeformText] = useState('')
 
  const current = (overrideGoal ? WIZARD_STEPS : steps)[step]
@@ -124,16 +126,39 @@ export function TrainerGenerator() {
  )
  }
 
- // Wizard view
+ // Method picker — first thing the user sees. Three big cards, plain
+ // language, no jargon. Pick one and its flow renders below.
+ if (!inputMode) {
+   return <MethodPicker onPick={setInputMode} />
+ }
+
+ // Manual builder — opens RoutineBuilder inline. Saves to "האימונים שלי"
+ // via bbSaveRoutine, same behavior as opening the builder from that tab.
+ if (inputMode === 'manual') {
+   return <RoutineBuilder routine={null} open={true} onClose={() => setInputMode(null)} />
+ }
+
+ // Wizard / Freeform view
  return (
  <div>
- {/* Input mode toggle */}
+ {/* Header — shows chosen method + back-to-picker link */}
  <div style={{
-   display:'flex', gap: 4, background: t.color.bgSoft, padding: 4,
-   borderRadius: t.radius.md, marginBottom: t.space.md,
+   display:'flex', alignItems:'center', justifyContent:'space-between',
+   marginBottom: t.space.md, gap: 10,
  }}>
-   <button onClick={() => setInputMode('wizard')} style={inputModeBtnStyle(inputMode === 'wizard')}>שאלון מודרך</button>
-   <button onClick={() => setInputMode('freeform')} style={inputModeBtnStyle(inputMode === 'freeform')}>תיאור בטקסט חופשי</button>
+   <div style={{
+     display:'flex', gap: 4, background: t.color.bgSoft, padding: 4,
+     borderRadius: t.radius.md, flex: 1,
+   }}>
+     <button onClick={() => setInputMode('wizard')} style={inputModeBtnStyle(inputMode === 'wizard')}>שאלון מודרך</button>
+     <button onClick={() => setInputMode('freeform')} style={inputModeBtnStyle(inputMode === 'freeform')}>תיאור בטקסט חופשי</button>
+   </div>
+   <button onClick={() => { setInputMode(null); restart() }} style={{
+     background:'transparent', border:`1px solid ${t.color.border}`,
+     color: t.color.silver1, padding:'8px 14px', borderRadius: t.radius.sm,
+     cursor:'pointer', fontFamily:'inherit', fontSize: 12,
+     whiteSpace:'nowrap',
+   }}>החלף שיטה</button>
  </div>
 
  {inputMode === 'freeform' && (
@@ -298,3 +323,83 @@ const inputModeBtnStyle = (on) => ({
   color: on ? t.color.gold : t.color.textDim,
   borderRadius: t.radius.sm,
 })
+
+// Method picker — 3 large cards. First screen the user sees on "בנה אימון משלך".
+function MethodPicker({ onPick }) {
+  const methods = [
+    {
+      key: 'wizard',
+      title: 'מחולל חכם',
+      sub: '3 שאלות והתכנית שלך מוכנה',
+      body: 'המערכת שואלת אותך על המטרה, ימי אימון וציוד — ובונה תכנית מותאמת אישית.',
+    },
+    {
+      key: 'freeform',
+      title: 'מחולל חופשי',
+      sub: 'תתאר במילים, המערכת תבין',
+      body: 'למשל: "אימון של 4 ימים לבניית מסה בחדר כושר" — והמערכת מפרשת ובונה.',
+    },
+    {
+      key: 'manual',
+      title: 'בניה עצמאית',
+      sub: 'תבנה מאפס · שליטה מלאה',
+      body: 'בחר תרגילים בעצמך, קבע סטים, חזרות ומשקלים. הכל שמור אוטומטית ב"האימונים שלי".',
+    },
+  ]
+  return (
+    <div style={{ display:'grid', gap: 12 }}>
+      <div style={{ padding:'4px 0 8px' }}>
+        <div style={{
+          fontFamily: t.font.family.mono, fontSize: 10, letterSpacing:'0.28em',
+          textTransform:'uppercase', color: t.color.wineLight, fontWeight: 700,
+          marginBottom: 6,
+        }}>בנה אימון משלך · Choose method</div>
+        <div style={{
+          fontFamily: t.font.family.display, fontSize: 22, fontWeight: 700,
+          color: t.color.white, letterSpacing:'-0.02em',
+        }}>איך תרצה להתחיל?</div>
+      </div>
+
+      <div style={{
+        display:'grid', gap: 12,
+        gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))',
+      }}>
+        {methods.map(m => (
+          <button
+            key={m.key}
+            onClick={() => onPick(m.key)}
+            style={{
+              display:'block', textAlign:'right', direction:'rtl',
+              padding: 20,
+              background: `linear-gradient(160deg, ${t.color.bgCard} 0%, ${t.color.bgElevated} 100%)`,
+              border: `1px solid ${t.color.border}`,
+              borderRadius: t.radius.lg,
+              cursor:'pointer', fontFamily:'inherit',
+              color: t.color.text,
+              transition: t.transition,
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = t.color.gold
+              e.currentTarget.style.transform = 'translateY(-2px)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = t.color.border
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
+          >
+            <div style={{
+              fontFamily: t.font.family.display, fontSize: 18, fontWeight: 700,
+              color: t.color.gold, letterSpacing:'-0.01em', marginBottom: 4,
+            }}>{m.title}</div>
+            <div style={{
+              fontSize: 12, color: t.color.silver1, fontWeight: 600, marginBottom: 10,
+            }}>{m.sub}</div>
+            <div style={{
+              fontSize: 12, color: t.color.textDim, lineHeight: 1.55,
+            }}>{m.body}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}

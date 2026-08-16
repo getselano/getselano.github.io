@@ -112,7 +112,7 @@ function Today() {
  subtitle={isRTL ? 'קליק אחד כדי להוסיף שוב' : 'One click to add again'}
  action={<Badge color={t.color.gold}>{recentMeals.length}</Badge>}
  />
- <div style={{ display:'flex', gap: 8, overflowX:'auto', paddingBottom: 6, marginTop: 4 }}>
+ <div className="hfos-hscroll" style={{ display:'flex', gap: 8, overflowX:'auto', paddingBottom: 6, marginTop: 4 }}>
  {recentMeals.map((m, i) => (
  <button key={i}
  onClick={() => logMeal({ foodId: m.foodId, name: m.name, grams: m.grams, kcal: m.kcal, p: m.p, c: m.c, f: m.f })}
