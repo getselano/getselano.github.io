@@ -6,7 +6,7 @@ export const CATEGORIES = [
   { id: 'yoga',       label: 'יוגה',            icon: '', color: '#3fbf5c' },
   { id: 'pilates',    label: 'פילאטיס',         icon: '', color: '#5aa0ff' },
   { id: 'bodyweight', label: 'כוח משקל גוף',   icon: '', color: '#c8a84b' },
-  { id: 'crossfit',   label: 'קרוספיט',         icon: '', color: '#e05a5a' },
+  { id: 'crossfit',   label: 'METCONS',         icon: '', color: '#e05a5a' },
   { id: 'mobility',   label: 'MOBILITY',  icon: '', color: '#a05ae0' },
   { id: 'abs',        label: 'ABS',       icon: '', color: '#e05aac' },
 ]

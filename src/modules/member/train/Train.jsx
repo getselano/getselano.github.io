@@ -33,7 +33,7 @@ export function Train() {
  <Tabs tabs={[
  { key:'plan', label: 'התכנית שלי' },
  { key:'bb', label: 'אימוני כוח' },
- { key:'crossfit', label: 'קרוספיט · WOD' },
+ { key:'crossfit', label: 'METCONS · WOD' },
  { key:'programs', label: 'תכניות מוכנות' },
  { key:'history', label: 'היסטוריה' },
  { key:'import', label: 'ייבוא PDF' },

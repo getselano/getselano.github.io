@@ -302,12 +302,163 @@ export const BENCHMARKS = [
     eliteBenchmark: { male: '9:00', female: '10:00' },
     avgTime: { male: '13:00', female: '14:00' },
   },
+
+  // ═══════════════════ GAMES · אימוני דגל מהתחרויות ═══════════════════
+  {
+    id: 'fight_gone_bad',
+    name: 'Fight Gone Bad',
+    category: 'games',
+    format: 'reps_max',
+    timeCap: 17 * 60,
+    description: 'קלאסיקה מ־Games 2005 — 3 סבבים של 5 תחנות דקה כל אחת + דקת מנוחה. סופרים חזרות/קלוריות.',
+    prescription: {
+      scheme: '3 rounds × (5 stations × 1 min work + 1 min rest)',
+      movements: [
+        { id: 'wall_ball_shots', label: 'Wall Balls (9/6 kg)' },
+        { id: 'sdhp',            label: 'Sumo Deadlift High Pull (35/25 kg)' },
+        { id: 'box_jumps',       label: 'Box Jumps (50 cm)' },
+        { id: 'push_press',      label: 'Push Press (35/25 kg)' },
+        { id: 'rowing',          label: 'Row (calories)' },
+      ],
+    },
+    lines: ['3 סבבים · 1 דקה על כל תחנה · 1 דקת מנוחה בין סבבים:', '  Wall Balls (9/6 kg)', '  SDHP (35/25 kg)', '  Box Jumps (50cm)', '  Push Press (35/25 kg)', '  Row (calories)'],
+    eliteBenchmark: { male: '450+', female: '400+' },
+    avgTime: { male: '320', female: '280' },
+  },
+  {
+    id: 'cf_total',
+    name: 'CF Total',
+    category: 'games',
+    format: 'load_max',
+    timeCap: 60 * 60,
+    description: 'מבחן הכוח הטהור — סכום 1RM של Back Squat + Strict Press + Deadlift. 3 ניסיונות לכל תרגיל.',
+    prescription: {
+      scheme: 'sum of 1RM',
+      movements: [
+        { id: 'back_squat',      label: 'Back Squat 1RM' },
+        { id: 'overhead_press',  label: 'Strict Press 1RM' },
+        { id: 'deadlift',        label: 'Deadlift 1RM' },
+      ],
+    },
+    lines: ['CrossFit Total — סכום 1RM:', '  Back Squat', '  Strict Press', '  Deadlift', '  (3 ניסיונות לכל תרגיל)'],
+    eliteBenchmark: { male: '500+ kg', female: '340+ kg' },
+    avgTime: { male: '350 kg', female: '230 kg' },
+  },
+  {
+    id: 'nasty_girls',
+    name: 'Nasty Girls',
+    category: 'games',
+    format: 'for_time',
+    timeCap: 25 * 60,
+    description: 'אימון קרב מ־Games 2007 — Kristan Clever הפכה אותו למיתולוגי. 3 סבבים של סקוואטים + מסל־אפים + hang power cleans.',
+    prescription: {
+      scheme: '3 rounds',
+      movements: [
+        { id: 'air_squats',        label: 'Air Squats × 50' },
+        { id: 'ring_muscle_up',    label: 'Ring Muscle-ups × 7' },
+        { id: 'hang_power_clean',  label: 'Hang Power Cleans × 10 (65/45 kg)' },
+      ],
+    },
+    lines: ['3 סבבים For Time:', '  50 Air Squats', '  7 Muscle-ups', '  10 Hang Power Cleans (65/45 kg)'],
+    eliteBenchmark: { male: '7:30', female: '9:00' },
+    avgTime: { male: '15:00', female: '18:00' },
+  },
+  {
+    id: 'open_18_5',
+    name: 'Open 18.5',
+    category: 'games',
+    format: 'for_time',
+    timeCap: 7 * 60,
+    description: 'הפינאלה של Open 2018 — Thrusters + Chest-to-Bar Pull-ups. סולם יורד קטלני.',
+    prescription: {
+      scheme: '21-18-15-12-9-6-3',
+      movements: [
+        { id: 'thruster',      label: 'Thrusters (45/30 kg)' },
+        { id: 'chest_to_bar',  label: 'Chest-to-Bar Pull-ups' },
+      ],
+    },
+    lines: ['For Time (7 min cap) — 21-18-15-12-9-6-3:', '  Thrusters (45/30 kg)', '  Chest-to-Bar Pull-ups'],
+    eliteBenchmark: { male: '4:30', female: '5:15' },
+    avgTime: { male: '7:00', female: '7:00' },
+  },
+  {
+    id: 'open_22_1',
+    name: 'Open 22.1',
+    category: 'games',
+    format: 'amrap',
+    timeCap: 15 * 60,
+    description: 'האימון הפותח של Open 2022 — Wall Walks + DB Snatches + Box Jump Overs. AMRAP 15 דקות.',
+    prescription: {
+      scheme: 'AMRAP 15',
+      movements: [
+        { id: 'wall_walks', label: 'Wall Walks × 3' },
+        { id: 'db_snatch',  label: 'DB Snatches × 12 (22.5/15 kg)' },
+        { id: 'box_overs',  label: 'Box Jump Overs × 15 (60/50 cm)' },
+      ],
+    },
+    lines: ['AMRAP 15 דקות:', '  3 Wall Walks', '  12 DB Snatches (22.5/15 kg)', '  15 Box Jump Overs (60/50 cm)'],
+    eliteBenchmark: { male: '10+ rounds', female: '8+ rounds' },
+    avgTime: { male: '6 rounds', female: '5 rounds' },
+  },
+  {
+    id: 'open_24_1',
+    name: 'Open 24.1',
+    category: 'games',
+    format: 'for_time',
+    timeCap: 15 * 60,
+    description: 'הפתיחה של Open 2024 — DB Snatch + Burpees Over Dumbbell. סולם עולה + יורד.',
+    prescription: {
+      scheme: '21-15-9 (R arm) + 9-15-21 (L arm) — burpees between',
+      movements: [
+        { id: 'db_snatch',  label: 'DB Snatch (22.5/15 kg)' },
+        { id: 'burpees',    label: 'Burpees Over the DB' },
+      ],
+    },
+    lines: ['For Time (15 min cap):', '  21 DB Snatches (R) → 21 Burpees Over DB', '  15 DB Snatches (R) → 15 Burpees Over DB', '  9  DB Snatches (R) → 9  Burpees Over DB', '  9  DB Snatches (L) → 9  Burpees Over DB', '  15 DB Snatches (L) → 15 Burpees Over DB', '  21 DB Snatches (L) → 21 Burpees Over DB'],
+    eliteBenchmark: { male: '9:00', female: '10:30' },
+    avgTime: { male: '13:00', female: '14:00' },
+  },
+  {
+    id: 'chad_1000x',
+    name: 'Chad 1000x',
+    category: 'games',
+    format: 'for_time',
+    timeCap: 90 * 60,
+    description: 'מבחן ה־Hero של Chad Wilkinson — 1000 עליות על קופסה עם וסט 20/14 ק"ג. מנטלית ופיזית בלתי אפשרי כמעט.',
+    prescription: {
+      scheme: '1000 reps',
+      movements: [
+        { id: 'box_step_ups', label: 'Box Step-ups (50 cm) עם וסט 20/14 kg' },
+      ],
+    },
+    lines: ['For Time:', '  1000 Box Step-ups (50 cm)', '  * ללבוש וסט 20/14 kg', '  * לתעד גם ללא וסט אם אין'],
+    eliteBenchmark: { male: '35:00', female: '42:00' },
+    avgTime: { male: '75:00', female: '85:00' },
+  },
+  {
+    id: 'amanda',
+    name: 'Amanda',
+    category: 'games',
+    format: 'for_time',
+    timeCap: 10 * 60,
+    description: 'הופיע ב־Games 2010 — Muscle-ups + Squat Snatches. אחד מהכי טכניים.',
+    prescription: {
+      scheme: '9-7-5',
+      movements: [
+        { id: 'ring_muscle_up', label: 'Muscle-ups' },
+        { id: 'snatch',         label: 'Squat Snatches (61/43 kg)' },
+      ],
+    },
+    lines: ['For Time (10 min cap) — 9-7-5:', '  Muscle-ups', '  Squat Snatches (61/43 kg)'],
+    eliteBenchmark: { male: '4:00', female: '5:00' },
+    avgTime: { male: '9:00', female: '10:00' },
+  },
 ]
 
 export const BENCHMARK_CATEGORIES = {
-  girls:  { he: 'The Girls',   description: 'הבנצ׳מרקים הקלאסיים של CrossFit HQ' },
-  heroes: { he: 'Heroes',      description: 'לזכר לוחמים שנפלו' },
-  open:   { he: 'Open',        description: 'קלאסיקות מה-Open העולמי' },
+  girls:  { he: 'The Girls',   description: 'הבנצ׳מרקים הקלאסיים — הבסיס של כל מתאמן פונקציונאלי' },
+  heroes: { he: 'Heroes',      description: 'לזכר לוחמים שנפלו — האימונים הכבדים ביותר' },
+  games:  { he: 'Games',       description: 'אימוני דגל מתחרויות ה-Games ו-Open הבינלאומיות' },
 }
 
 export const BENCHMARK_BY_ID = Object.fromEntries(BENCHMARKS.map(b => [b.id, b]))

@@ -256,7 +256,7 @@ export const programs = {
         wodType:'For Time', timeCap: 8,
         prescription:'21-15-9 חזרות של:\n• Thrusters (43 ק״ג גברים / 30 ק״ג נשים)\n• Pull-ups',
         rxTime:'2:30-4:00',
-        description:'ה-WOD המפורסם ביותר. סבל טהור של 3-8 דקות. הבנצ׳מרק של כל קרוספיטר.',
+        description:'ה-WOD המפורסם ביותר. סבל טהור של 3-8 דקות. הבנצ׳מרק הראשי.',
         blocks:[
           { name:'Warm-up', prescription:'5 דק׳ חתירה + מוביליטי כתפיים', format:'skill' },
           { name:'Fran', wodType:'For Time', prescription:'21-15-9 Thrusters + Pull-ups', format:'metcon' },

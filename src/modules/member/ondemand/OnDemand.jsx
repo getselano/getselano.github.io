@@ -39,7 +39,7 @@ export function OnDemand() {
  <Badge color={t.color.gold}> ON-DEMAND</Badge>
  <h1 style={{ fontSize: t.font.hero, fontWeight: 900, marginTop: 10, marginBottom: 6 }}>{isRTL ? 'אימונים בבית — בקליק' : 'Home workouts — one click away'}</h1>
  <p style={{ color: t.color.textDim, fontSize: t.font.md, maxWidth: 520, lineHeight: 1.5 }}>
- {VIDEOS.length} {isRTL ? 'סרטוני אימון בבית: פונקציונאלי, יוגה, פילאטיס, כוח משקל גוף, קרוספיט, ו־MOBILITY.' : 'home workout videos: functional, yoga, pilates, bodyweight strength, CrossFit, and MOBILITY.'}
+ {VIDEOS.length} {isRTL ? 'סרטוני אימון בבית: פונקציונאלי, יוגה, פילאטיס, כוח משקל גוף, METCONS, ו־MOBILITY.' : 'home workout videos: functional, yoga, pilates, bodyweight strength, CrossFit, and MOBILITY.'}
  {isRTL ? ' בחר קטגוריה, אורך, ורמה — ותצא לדרך.' : ' Pick a category, length, and level — and go.'}
  </p>
  </div>
