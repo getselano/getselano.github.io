@@ -13,8 +13,28 @@ export function Profile({ go }) {
  const { state, updateProfile, setWearable, set1RM, reset } = useApp()
  const { isRTL } = useI18n()
  const [tab, setTab] = useState('info')
+ const [saveStatus, setSaveStatus] = useState('idle') // idle | saving | ok | err
  const p = state.profile
  const set = (patch) => updateProfile(patch)
+ // Explicit save button — the app already persists live on every field
+ // change (updateProfile writes to local state + Supabase upsert), but
+ // trainees want a clear "saved" confirmation so they know the data is
+ // committed. Button forces a re-upsert of the current profile snapshot.
+ const handleSave = async () => {
+   setSaveStatus('saving')
+   try {
+     await updateProfile({
+       name: p.name, age: p.age, sex: p.sex,
+       heightCm: p.heightCm, weightKg: p.weightKg,
+       activity: p.activity, goalKey: p.goalKey, dietKey: p.dietKey,
+       experience: p.experience, constraints: p.constraints,
+     })
+     setSaveStatus('ok')
+   } catch {
+     setSaveStatus('err')
+   }
+   setTimeout(() => setSaveStatus('idle'), 2500)
+ }
 
  return (
  <>
@@ -58,6 +78,48 @@ export function Profile({ go }) {
  </div>
  <div style={{ marginTop: 14 }}>
  <Input label={isRTL ? 'הגבלות/פציעות' : 'Restrictions/injuries'} value={p.constraints} onChange={e => set({ constraints: e.target.value })} />
+ </div>
+
+ {/* Explicit save — reassurance for users who don't trust auto-save. */}
+ <div style={{
+   marginTop: 18, paddingTop: 14,
+   borderTop: `1px solid ${t.color.hairline}`,
+   display:'flex', gap: 10, alignItems:'center', flexWrap:'wrap',
+ }}>
+   <Button
+     variant="primary" size="lg"
+     onClick={handleSave}
+     disabled={saveStatus === 'saving'}
+     style={{ minWidth: 180, justifyContent:'center' }}
+   >
+     {saveStatus === 'saving'
+       ? (isRTL ? 'שומר…' : 'Saving…')
+       : (isRTL ? 'שמור פרטים' : 'Save details')}
+   </Button>
+   {saveStatus === 'ok' && (
+     <span style={{
+       padding:'8px 14px', borderRadius: t.radius.sm,
+       background: `${t.color.success}18`, color: t.color.success,
+       border: `1px solid ${t.color.success}44`,
+       fontSize: 13, fontWeight: 700,
+     }}>{isRTL ? 'נשמר בהצלחה' : 'Saved successfully'}</span>
+   )}
+   {saveStatus === 'err' && (
+     <span style={{
+       padding:'8px 14px', borderRadius: t.radius.sm,
+       background: `${t.color.danger}18`, color: t.color.danger,
+       border: `1px solid ${t.color.danger}44`,
+       fontSize: 13,
+     }}>{isRTL ? 'שמירה נכשלה, נסה שוב' : 'Save failed, try again'}</span>
+   )}
+   <span style={{
+     fontSize: 11, color: t.color.textMuted,
+     marginInlineStart:'auto', maxWidth: 260, textAlign:'end',
+   }}>
+     {isRTL
+       ? 'שינויים נשמרים גם אוטומטית עם כל עדכון שדה.'
+       : 'Changes are auto-saved as you edit each field too.'}
+   </span>
  </div>
  </Card>
  </div>
