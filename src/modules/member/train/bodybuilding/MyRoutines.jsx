@@ -137,11 +137,11 @@ function RoutineCard({ routine, isSystem, onRun, onEdit, onDelete }) {
  </span>
  )}
  </div>
- <div style={{ display:'flex', gap: 8, marginTop: 12, flexWrap:'wrap' }}>
+ <div style={{ display:'flex', gap: 8, marginTop: 12, flexWrap:'wrap', alignItems:'center' }}>
  <Button variant="primary"size="sm"onClick={onRun}>התחל אימון</Button>
  <Button variant="ghost"size="sm"onClick={onEdit}>ערוך</Button>
  {onDelete && <Button variant="danger"size="sm" onClick={onDelete}>מחק</Button>}
- <span style={{ marginInlineStart:'auto' }}><PublishToCommunityChip routine={routine} /></span>
+ <PublishToCommunityChip routine={routine} />
  </div>
  </div>
  </div>

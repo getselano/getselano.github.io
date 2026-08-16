@@ -133,7 +133,7 @@ export function Shell({ page, setPage, children }) {
 
  {/* Main */}
  <main style={{ flex: 1, minWidth: 0, display:'flex', flexDirection:'column'}}>
- <TopBar page={nav.find(n => n.key === page)} isAdmin={isAdmin} isAdminView={isAdminView} onMenu={() => setMobileOpen(true)} />
+ <TopBar page={nav.find(n => n.key === page)} isAdmin={isAdmin} isAdminView={isAdminView} onNavigate={setPage} onMenu={() => setMobileOpen(true)} />
  <div className="hfos-content"style={{ padding: t.space.xl, maxWidth: 1400, width:'100%', margin:'0 auto', flex: 1 }}>
  {children}
  </div>
@@ -388,7 +388,7 @@ function NavItem({ item, active, onClick }) {
  )
 }
 
-function TopBar({ page, isAdmin, isAdminView, onMenu }) {
+function TopBar({ page, isAdmin, isAdminView, onNavigate, onMenu }) {
  const { isRTL } = useI18n()
  return (
  <header className="hfos-topbar"style={{
@@ -423,7 +423,7 @@ function TopBar({ page, isAdmin, isAdminView, onMenu }) {
  </div>
  </div>
  <div style={{ display:'flex', alignItems:'center', gap: 12 }}>
- {!isAdminView && <AdminMessageBell />}
+ {!isAdminView && <AdminMessageBell onNavigate={onNavigate} />}
  <button style={{
  background: t.color.bgSoft, border:`1px solid ${t.color.border}`, borderRadius: t.radius.pill,
  padding:'5px 12px', color: t.color.text, cursor:'pointer', fontFamily:'inherit', fontSize: t.font.xs,
