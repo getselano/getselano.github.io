@@ -19,7 +19,8 @@ export const TRANSLATIONS = {
     'nav.community':  'קהילה',
     'nav.store':      'חנות',
     'nav.personal':   'אימון אישי',
-    'nav.control':    'מרכז בקרה',
+    'nav.control':    'עזרה',
+    'nav.more':       'עוד',
     'nav.talk':       'דברו איתנו',
     'nav.profile':    'פרופיל',
 
@@ -188,7 +189,8 @@ export const TRANSLATIONS = {
     'nav.community':  'Community',
     'nav.store':      'Store',
     'nav.personal':   'Personal Training',
-    'nav.control':    'Control Center',
+    'nav.control':    'Help',
+    'nav.more':       'More',
     'nav.talk':       'Talk to Us',
     'nav.profile':    'Profile',
 

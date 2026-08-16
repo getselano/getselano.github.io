@@ -31,12 +31,12 @@ export function Train() {
  <>
  <DisclaimerNote kind="training" />
  <Tabs tabs={[
- { key:'plan', label: tr('train.tab.plan') },
- { key:'bb', label: tr('train.tab.bb','אימוני כוח') },
- { key:'crossfit', label: tr('train.tab.crossfit') },
- { key:'programs', label: tr('train.tab.programs') },
- { key:'import', label: tr('train.tab.import') },
- { key:'history', label: tr('train.tab.history') },
+ { key:'plan', label: 'התכנית שלי' },
+ { key:'bb', label: 'אימוני כוח' },
+ { key:'crossfit', label: 'קרוספיט · WOD' },
+ { key:'programs', label: 'תכניות מוכנות' },
+ { key:'history', label: 'היסטוריה' },
+ { key:'import', label: 'ייבוא PDF' },
  ]} active={tab} onChange={setTab} />
  {tab === 'plan'&& <MyPlan />}
  {tab === 'bb'&& <BodybuildingHub />}

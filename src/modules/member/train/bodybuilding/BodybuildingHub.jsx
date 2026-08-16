@@ -18,10 +18,10 @@ export function BodybuildingHub() {
  <div>
  <Tabs
  tabs={[
- { key:'trainer', label: tr('bb.tab.trainer','המחולל') },
- { key:'legends', label: tr('bb.tab.legends','Legends') },
- { key:'programs', label: tr('bb.tab.programs','תוכניות') },
- { key:'routines', label: tr('bb.tab.routines','Routines') },
+ { key:'trainer', label: 'בנה אימון משלך' },
+ { key:'legends', label: 'תכניות אליפות' },
+ { key:'programs', label: 'תכניות נוספות' },
+ { key:'routines', label: 'האימונים שלי' },
  ]}
  active={tab}
  onChange={setTab}

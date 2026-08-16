@@ -5,19 +5,29 @@ import { useAuth } from '../../auth/AuthContext'
 import { useI18n } from '../../i18n/i18n'
 import { AdminMessageBell } from '../notifications/AdminMessageBell'
 
+// Primary member navigation — the 5 tabs a trainee opens daily. Everything
+// else moved under MEMBER_MORE_KEYS which renders as a dropdown/drawer.
 const MEMBER_NAV_KEYS = [
  { key:'home', i18n:'nav.home' },
- { key:'goals', i18n:'nav.goals' },
- { key:'progress', i18n:'nav.progress' },
  { key:'train', i18n:'nav.train' },
- { key:'rehab', i18n:'nav.rehab' },
  { key:'nutrition', i18n:'nav.nutrition' },
+ { key:'progress', i18n:'nav.progress' },
+ { key:'community', i18n:'nav.community' },
+]
+
+// Secondary items — reachable via the "עוד" (More) menu in top-bar/drawer.
+// Kept as valid routes so old deep-links still work.
+const MEMBER_MORE_KEYS = [
  { key:'mind', i18n:'nav.mind' },
  { key:'calendar', i18n:'nav.calendar' },
  { key:'ondemand', i18n:'nav.ondemand' },
- { key:'community', i18n:'nav.community' },
  { key:'store', i18n:'nav.store' },
  { key:'personal', i18n:'nav.personal' },
+ { key:'goals', i18n:'nav.goals' },
+ { key:'rehab', i18n:'nav.rehab' },
+ { key:'reminders', i18n:'nav.reminders' },
+ { key:'talk', i18n:'nav.talk' },
+ { key:'profile', i18n:'nav.profile' },
  { key:'control', i18n:'nav.control' },
 ]
 
@@ -43,7 +53,9 @@ export function Shell({ page, setPage, children }) {
  const isAdmin = user?.role === 'admin'// real admin
  const isAdminView = effectiveRole === 'admin'// currently viewing admin console
  const navKeys = isAdminView ? ADMIN_NAV_KEYS : MEMBER_NAV_KEYS
+ const moreKeys = isAdminView ? [] : MEMBER_MORE_KEYS
  const nav = navKeys.map(n => ({ ...n, label: tr(n.i18n) }))
+ const more = moreKeys.map(n => ({ ...n, label: tr(n.i18n) }))
  const [mobileOpen, setMobileOpen] = useState(false)
 
  const switchView = (role) => {
@@ -71,6 +83,9 @@ export function Shell({ page, setPage, children }) {
  {nav.map(item => (
  <NavItem key={item.key} item={item} active={page === item.key} onClick={() => setPage(item.key)} />
  ))}
+ {more.length > 0 && (
+   <MoreGroup items={more} activeKey={page} onPick={setPage} label={tr('nav.more')} />
+ )}
  </nav>
  <div style={{
  marginTop:'auto', padding:'12px 4px',
@@ -103,6 +118,14 @@ export function Shell({ page, setPage, children }) {
  {nav.map(item => (
  <NavItem key={item.key} item={item} active={page === item.key} onClick={() => { setPage(item.key); setMobileOpen(false) }} />
  ))}
+ {more.length > 0 && (
+   <MoreGroup
+     items={more} activeKey={page}
+     onPick={(k) => { setPage(k); setMobileOpen(false) }}
+     label={tr('nav.more')}
+     initiallyOpen={more.some(m => m.key === page)}
+   />
+ )}
  </div>
  </aside>
  </div>
@@ -140,6 +163,10 @@ export function Shell({ page, setPage, children }) {
  </button>
  )
  })}
+ {/* "עוד" button in mobile bottom-nav. Only needed for admin (which has
+     more than 5 pages) — member's 5 tabs already fill the strip and secondary
+     items live in the top-bar burger drawer. */}
+ {isAdminView && (
  <button onClick={() => setMobileOpen(true)} style={{
  flex:1, padding:'14px 2px 12px', border:'none', background:'transparent',
  color: t.color.bone, cursor:'pointer',
@@ -150,6 +177,7 @@ export function Shell({ page, setPage, children }) {
  fontSize: 13, fontWeight: 500, letterSpacing:'-0.005em',
  }}>{tr('nav.more', isRTL ? 'עוד':'More')}</span>
  </button>
+ )}
  </nav>
  </main>
  <ResponsiveStyle />
@@ -285,6 +313,50 @@ function UserBlock({ user, onLogout }) {
  )
 }
 
+// Accordion group that shows the secondary "More" nav items. Auto-opens if
+// the currently-active page is one of the items inside so a user landing on a
+// deep-linked "More" page sees where it lives.
+function MoreGroup({ items, activeKey, onPick, label, initiallyOpen }) {
+  const activeIsInside = items.some(it => it.key === activeKey)
+  const [open, setOpen] = React.useState(initiallyOpen ?? activeIsInside)
+  React.useEffect(() => { if (activeIsInside) setOpen(true) }, [activeIsInside])
+  return (
+    <div style={{ marginTop: 4 }}>
+      <button onClick={() => setOpen(v => !v)} style={{
+        display:'flex', alignItems:'center', gap: 12, padding:'11px 14px', width:'100%', textAlign:'right',
+        background:'transparent', border:'none',
+        color: t.color.silver1, cursor:'pointer',
+        borderRadius: t.radius.md, fontFamily:'inherit',
+        fontSize: 14, letterSpacing:'-0.005em',
+        fontWeight: 400,
+      }}>
+        <span style={{ width: 3, height: 16, borderRadius: 2, background:'transparent', flexShrink: 0 }} />
+        <span style={{ flex: 1 }}>{label || 'עוד'}</span>
+        <span style={{ fontSize: 10, color: t.color.silver3, transform: open ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .18s' }}>▾</span>
+      </button>
+      {open && (
+        <div style={{
+          display:'flex', flexDirection:'column', gap: 2,
+          padding:'4px 0 4px 16px',
+          borderInlineStart: `1px solid ${t.color.hairline}`,
+          marginInlineStart: 16, marginTop: 2,
+        }}>
+          {items.map(it => (
+            <button key={it.key} onClick={() => onPick(it.key)} style={{
+              display:'block', width:'100%', textAlign:'right',
+              padding:'8px 12px', background:'transparent', border:'none',
+              color: activeKey === it.key ? t.color.white : t.color.silver2,
+              cursor:'pointer', fontFamily:'inherit', fontSize: 13,
+              borderRadius: t.radius.sm,
+              fontWeight: activeKey === it.key ? 600 : 400,
+            }}>{it.label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function NavItem({ item, active, onClick }) {
  const isTalk = item.key === 'talk'
  return (
@@ -396,16 +468,19 @@ function ResponsiveStyle() {
 // Choose 4 primary items for the mobile bottom nav.
 // Always includes the current page so the user sees where they are.
 function getPrimaryNav(nav, currentPage) {
- // For member app, prioritize daily-use pages
- const priorityMember = ['home','goals','train','nutrition']
- const priorityAdmin = ['overview','members','requests','alerts']
+ // Member app: the 5 tabs ARE the primary — show all of them at the bottom.
+ // Admin app: prioritize daily-use dashboard pages; a "More" button covers rest.
  const isAdmin = nav[0]?.key === 'overview'
- const priority = isAdmin ? priorityAdmin : priorityMember
- const primary = nav.filter(n => priority.includes(n.key))
- // Ensure current page is visible even if not in priority list
+ if (!isAdmin) {
+   // Member has 5 items → show all 5 in bottom nav (no "More" button needed on
+   // the strip, though it still exists as a drawer trigger).
+   return nav.slice(0, 5)
+ }
+ const priorityAdmin = ['overview','members','requests','alerts']
+ const primary = nav.filter(n => priorityAdmin.includes(n.key))
  if (!primary.find(n => n.key === currentPage)) {
- const curr = nav.find(n => n.key === currentPage)
- if (curr) primary[3] = curr
+   const curr = nav.find(n => n.key === currentPage)
+   if (curr) primary[3] = curr
  }
  return primary.slice(0, 4)
 }

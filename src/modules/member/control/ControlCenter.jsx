@@ -34,7 +34,7 @@ export function ControlCenter({ go }) {
           fontFamily: t.font.family.mono, fontSize: 10, letterSpacing:'0.28em',
           textTransform:'uppercase', color: t.color.wineLight, fontWeight: 700,
           marginBottom: 6,
-        }}>מרכז בקרה · Control Center</div>
+        }}>עזרה · Help center</div>
         <div style={{
           fontFamily: t.font.family.display, fontSize: 26, fontWeight: 700,
           color: t.color.white, letterSpacing:'-0.02em',

@@ -97,6 +97,11 @@ export function Home({ go }) {
  </div>
  </div>
 
+ {/* Primary CTA — the single most important button in the whole app.
+     Adapts label to whether a plan is active + whether today already has
+     a logged workout. Two clicks → training. */}
+ <PrimaryTrainCta state={state} go={go} isRTL={isRTL} />
+
  {/* Goal widget - most important thing in the app */}
  <GoalWidget state={state} go={go} />
 
@@ -153,6 +158,53 @@ export function Home({ go }) {
  `}</style>
  </div>
  )
+}
+
+// Big prominent CTA at the top of Home — the single most important button.
+// Label + subtitle adapt to plan/history so it always reads as the next action.
+function PrimaryTrainCta({ state, go, isRTL }) {
+  const plan = state.plan
+  const hasPlan = !!plan
+  const dayLabel = plan?.sessions?.[0]?.name || null
+  const label = hasPlan
+    ? (isRTL ? 'התחל את אימון היום' : "Start today's workout")
+    : (isRTL ? 'בנה לי אימון' : 'Build me a workout')
+  const sub = hasPlan
+    ? (dayLabel ? (isRTL ? `היום: ${dayLabel}` : `Today: ${dayLabel}`) : '')
+    : (isRTL ? 'המחולל יבנה תכנית בהתאמה אישית ב־3 שאלות' : 'Generator will build a personalized plan in 3 questions')
+
+  return (
+    <button
+      onClick={() => go('train')}
+      style={{
+        display:'block', width:'100%',
+        padding:'22px 24px',
+        background: `linear-gradient(135deg, ${t.color.wineLight} 0%, ${t.color.wine} 100%)`,
+        border:'none', borderRadius: t.radius.xl,
+        color: t.color.white, fontFamily:'inherit',
+        cursor:'pointer', textAlign:'right', direction: isRTL ? 'rtl' : 'ltr',
+        boxShadow: `0 8px 24px ${t.color.wineGlow || 'rgba(199,64,80,0.3)'}`,
+        transition: t.transition,
+      }}
+      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+      onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+    >
+      <div style={{
+        fontFamily: t.font.family.mono, fontSize: 10, letterSpacing:'0.28em',
+        color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform:'uppercase',
+        marginBottom: 6,
+      }}>{isRTL ? 'הפעולה הבאה' : 'Next action'}</div>
+      <div style={{
+        fontFamily: t.font.family.display, fontSize: 26, fontWeight: 700,
+        letterSpacing:'-0.02em', marginBottom: 4,
+      }}>{label}</div>
+      {sub && (
+        <div style={{
+          color:'rgba(255,255,255,0.85)', fontSize: 13, lineHeight: 1.4,
+        }}>{sub}</div>
+      )}
+    </button>
+  )
 }
 
 function QuickAction({ icon, text, onClick }) {
