@@ -142,21 +142,33 @@ export async function deleteWorkout(workoutId) {
 // ─── Real-time — new workouts + likes + comments ─────────
 // Toast component subscribes for INSERT on shared_workouts (excludes own).
 // Community screen subscribes for everything to keep counts fresh.
+// Realtime — each caller gets its own channel instance. Supabase requires
+// callbacks to be registered BEFORE .subscribe(), and disallows reusing a
+// channel name across multiple subscribers, so we mint a unique name per
+// call (bell / toast / community feed each mount independently).
+let _channelCounter = 0
 export function subscribeToFeed({ onInsertWorkout, onLikeChange, onCommentChange }) {
   if (!supabaseEnabled) return () => {}
-  const channel = supabase
-    .channel('shared_workouts_feed')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shared_workouts' }, p => {
-      if (p.new) onInsertWorkout?.(p.new)
+  _channelCounter += 1
+  const channelName = `shared_workouts_feed_${_channelCounter}_${Math.random().toString(36).slice(2, 8)}`
+  const ch = supabase.channel(channelName)
+  if (onInsertWorkout) {
+    ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shared_workouts' }, p => {
+      if (p.new) onInsertWorkout(p.new)
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'workout_likes' }, p => {
-      onLikeChange?.(p.new || p.old)
+  }
+  if (onLikeChange) {
+    ch.on('postgres_changes', { event: '*', schema: 'public', table: 'workout_likes' }, p => {
+      onLikeChange(p.new || p.old)
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'workout_comments' }, p => {
-      onCommentChange?.(p.new || p.old)
+  }
+  if (onCommentChange) {
+    ch.on('postgres_changes', { event: '*', schema: 'public', table: 'workout_comments' }, p => {
+      onCommentChange(p.new || p.old)
     })
-    .subscribe()
-  return () => { supabase.removeChannel(channel) }
+  }
+  ch.subscribe()
+  return () => { try { supabase.removeChannel(ch) } catch {} }
 }
 
 /*

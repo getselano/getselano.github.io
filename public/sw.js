@@ -11,7 +11,7 @@
 // !!! IMPORTANT !!!
 // Bump CACHE_NAME on every deploy that could break older cached assets.
 // The activate handler wipes every cache whose name != current one.
-const CACHE_NAME = 'selano-v4-2026-08-16'
+const CACHE_NAME = 'selano-v5-2026-08-16-b'
 
 const BASE = new URL(self.registration?.scope || './', self.location.href).pathname
 const OFFLINE_FALLBACK = BASE

@@ -107,24 +107,26 @@ export async function deleteAdminMessage(messageId) {
 // ─── Real-time subscription for members ───────────────────────
 // Fires the callback whenever a new admin_messages row is inserted
 // that targets me (personal or broadcast).
+// Unique channel per caller — same Supabase constraint as sharedWorkouts.
+let _msgChanCounter = 0
 export function subscribeToMemberMessages(userId, onInsert) {
   if (!supabaseEnabled || !userId) return () => {}
-  const channel = supabase
-    .channel(`admin_messages_${userId}`)
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'admin_messages',
-    }, (payload) => {
-      const row = payload.new
-      if (!row) return
-      // Deliver only if broadcast OR targeted at me
-      if (row.target_user_id === null || row.target_user_id === userId) {
-        onInsert(row)
-      }
-    })
-    .subscribe()
-  return () => { supabase.removeChannel(channel) }
+  _msgChanCounter += 1
+  const channelName = `admin_messages_${userId}_${_msgChanCounter}_${Math.random().toString(36).slice(2, 8)}`
+  const channel = supabase.channel(channelName)
+  channel.on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'admin_messages',
+  }, (payload) => {
+    const row = payload.new
+    if (!row) return
+    if (row.target_user_id === null || row.target_user_id === userId) {
+      onInsert(row)
+    }
+  })
+  channel.subscribe()
+  return () => { try { supabase.removeChannel(channel) } catch {} }
 }
 
 /*
