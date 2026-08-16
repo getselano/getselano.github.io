@@ -76,7 +76,7 @@ export function Shell({ page, setPage, children }) {
  scrollBehavior:'smooth', scrollbarGutter:'stable',
  }}>
  <BrandBlock isAdmin={isAdminView} />
- <UserBlock user={user} onLogout={logout} />
+ <UserBlock user={user} onLogout={logout} onOpenProfile={isAdminView ? undefined : () => setPage('profile')} />
  {isAdmin && <ViewAsSwitcher effectiveRole={effectiveRole} onSwitch={switchView} />}
  <LanguageSwitcher />
  <nav style={{ display:'flex', flexDirection:'column', gap: 4, marginTop: 12 }}>
@@ -112,7 +112,7 @@ export function Shell({ page, setPage, children }) {
  display:'flex', flexDirection:'column', gap: t.space.md,
  }}>
  <BrandBlock isAdmin={isAdminView} />
- <UserBlock user={user} onLogout={() => { logout(); setMobileOpen(false) }} />
+ <UserBlock user={user} onLogout={() => { logout(); setMobileOpen(false) }} onOpenProfile={isAdminView ? undefined : () => { setPage('profile'); setMobileOpen(false) }} />
  {isAdmin && <ViewAsSwitcher effectiveRole={effectiveRole} onSwitch={switchView} />}
  <LanguageSwitcher />
  {nav.map(item => (
@@ -287,7 +287,7 @@ function ViewAsSwitcher({ effectiveRole, onSwitch }) {
  )
 }
 
-function UserBlock({ user, onLogout }) {
+function UserBlock({ user, onLogout, onOpenProfile }) {
  const { isRTL } = useI18n()
  if (!user) return null
  const roleLabelMap = isRTL
@@ -295,19 +295,46 @@ function UserBlock({ user, onLogout }) {
    : { admin: 'Admin', coach: 'Coach', member: 'Member' }
  const roleLabel = roleLabelMap[user.role] || (isRTL ? 'משתמש' : 'User')
  const roleColor = { admin: t.color.gold, coach: t.color.info, member: t.color.success }[user.role]
+ // Whole avatar+name area is a button when we have a profile handler. This
+ // gives one-tap access from the sidebar to editing sex/weight/etc, which
+ // otherwise lived under 'עוד' → 'פרופיל' — two extra taps.
+ const canOpenProfile = typeof onOpenProfile === 'function'
  return (
- <div style={{ background: t.color.bgSoft, borderRadius: t.radius.md, padding: 10, display:'flex', alignItems:'center', gap: 10 }}>
  <div style={{
- width: 32, height: 32, borderRadius:'50%', background: roleColor, color:'#0d0d14',
- display:'flex', alignItems:'center', justifyContent:'center', fontWeight: 700, fontSize: 13, flexShrink: 0,
- }}>{(user.name || user.email)[0]?.toUpperCase() || '?'}</div>
- <div style={{ flex: 1, minWidth: 0 }}>
- <div style={{ fontSize: 12, fontWeight: 700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{user.name}</div>
- <div style={{ fontSize: 10, color: roleColor, fontWeight: 600 }}>{roleLabel}</div>
- </div>
+   background: t.color.bgSoft, borderRadius: t.radius.md, padding: 10,
+   display:'flex', alignItems:'center', gap: 10,
+ }}>
+ <button
+   onClick={canOpenProfile ? onOpenProfile : undefined}
+   disabled={!canOpenProfile}
+   title={canOpenProfile ? (isRTL ? 'פתח פרופיל' : 'Open profile') : undefined}
+   style={{
+     display:'flex', alignItems:'center', gap: 10, flex: 1, minWidth: 0,
+     background:'transparent', border:'none', padding: 0,
+     cursor: canOpenProfile ? 'pointer' : 'default',
+     color:'inherit', fontFamily:'inherit', textAlign:'right',
+   }}
+ >
+   <div style={{
+     width: 32, height: 32, borderRadius:'50%', background: roleColor, color:'#0d0d14',
+     display:'flex', alignItems:'center', justifyContent:'center', fontWeight: 700, fontSize: 13, flexShrink: 0,
+   }}>{(user.name || user.email)[0]?.toUpperCase() || '?'}</div>
+   <div style={{ flex: 1, minWidth: 0 }}>
+     <div style={{ fontSize: 12, fontWeight: 700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.name}</div>
+     <div style={{ display:'flex', alignItems:'center', gap: 6 }}>
+       <span style={{ fontSize: 10, color: roleColor, fontWeight: 600 }}>{roleLabel}</span>
+       {canOpenProfile && (
+         <span style={{
+           fontSize: 9, color: t.color.silver3, fontFamily: t.font.family.mono,
+           letterSpacing:'0.14em', textTransform:'uppercase',
+         }}>· {isRTL ? 'פרופיל' : 'profile'}</span>
+       )}
+     </div>
+   </div>
+ </button>
  <button onClick={onLogout} title={isRTL ? 'יציאה' : 'Log out'} style={{
- background:'transparent', border: `1px solid ${t.color.border}`, color: t.color.textDim,
- borderRadius: 6, padding:'4px 8px', cursor:'pointer', fontFamily:'inherit', fontSize: 11,
+   background:'transparent', border: `1px solid ${t.color.border}`, color: t.color.textDim,
+   borderRadius: 6, padding:'4px 8px', cursor:'pointer', fontFamily:'inherit', fontSize: 11,
  }}>{isRTL ? 'יציאה' : 'Log out'}</button>
  </div>
  )
