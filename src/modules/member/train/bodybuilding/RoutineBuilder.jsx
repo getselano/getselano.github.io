@@ -66,8 +66,11 @@ function computeSupersetBadges(exercises) {
 }
 
 // ─── Root ─────────────────────────────────────────────────
-export function RoutineBuilder({ routine, open, onClose }) {
-  const [mode, setMode] = useState(routine ? 'manual' : 'choose')
+export function RoutineBuilder({ routine, open, onClose, initialMode }) {
+  // Callers that already asked "which method?" upstream (like TrainerGenerator's
+  // MethodPicker) can pass initialMode='manual' to skip the inner chooser and
+  // land straight on the blank manual builder — avoids the double-picker bug.
+  const [mode, setMode] = useState(initialMode || (routine ? 'manual' : 'choose'))
   const [seedExercises, setSeedExercises] = useState(null)
 
   const enterAuto = () => setMode('auto')

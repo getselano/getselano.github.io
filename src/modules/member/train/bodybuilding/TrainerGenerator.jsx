@@ -135,7 +135,7 @@ export function TrainerGenerator() {
  // Manual builder — opens RoutineBuilder inline. Saves to "האימונים שלי"
  // via bbSaveRoutine, same behavior as opening the builder from that tab.
  if (inputMode === 'manual') {
-   return <RoutineBuilder routine={null} open={true} onClose={() => setInputMode(null)} />
+   return <RoutineBuilder routine={null} initialMode="manual" open={true} onClose={() => setInputMode(null)} />
  }
 
  // Wizard / Freeform view
