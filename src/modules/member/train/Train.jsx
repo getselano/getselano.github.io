@@ -21,30 +21,135 @@ import {
 } from '../../../utils/weekProgression'
 import { WodHub } from './disciplines/WodHub'
 import { BodybuildingHub } from './bodybuilding/BodybuildingHub'
+import { RunHub } from './RunHub'
 import { useI18n } from '../../../i18n/i18n'
 import { Kicker, SectionHead, Label, StatRow, Button as SButton, WeightDisplay } from '../../../design/components/primitives'
 
 export function Train() {
- const [tab, setTab] = useState('plan')
+ const { state } = useApp()
+ const [tab, setTab] = useState('bb')
+ const [showPlan, setShowPlan] = useState(false)
+ const [showHistory, setShowHistory] = useState(false)
+ const [showImport, setShowImport] = useState(false)
+ const [showPrograms, setShowPrograms] = useState(false)
  const { t: tr } = useI18n()
+ const hasPlan = !!state.plan
  return (
  <>
  <DisclaimerNote kind="training" />
- <Tabs tabs={[
- { key:'plan', label: 'התכנית שלי' },
- { key:'bb', label: 'אימוני כוח' },
- { key:'crossfit', label: 'METCONS · WOD' },
- { key:'programs', label: 'תכניות מוכנות' },
- { key:'history', label: 'היסטוריה' },
- { key:'import', label: 'ייבוא PDF' },
- ]} active={tab} onChange={setTab} />
- {tab === 'plan'&& <MyPlan />}
- {tab === 'bb'&& <BodybuildingHub />}
- {tab === 'crossfit'&& <WodHub />}
- {tab === 'programs'&& <ProgramsLibrary />}
- {tab === 'import'&& <PdfImporter />}
- {tab === 'history'&& <History />}
+
+ {/* Active plan quick-access card (only when a plan exists) */}
+ {hasPlan && !showPlan && (
+ <ActivePlanTopCard plan={state.plan} onOpen={() => setShowPlan(true)} />
+ )}
+
+ {/* My Plan takes over the screen when opened */}
+ {showPlan ? (
+ <>
+ <div style={{ marginBottom: 12 }}>
+ <button onClick={() => setShowPlan(false)} style={{
+ background:'transparent', border:`1px solid ${t.color.border}`, color: t.color.text,
+ padding:'8px 14px', borderRadius: t.radius.sm, cursor:'pointer', fontFamily:'inherit', fontSize: 13,
+ }}>← חזרה לאימונים</button>
+ </div>
+ <MyPlan />
  </>
+ ) : showHistory ? (
+ <>
+ <div style={{ marginBottom: 12 }}>
+ <button onClick={() => setShowHistory(false)} style={{
+ background:'transparent', border:`1px solid ${t.color.border}`, color: t.color.text,
+ padding:'8px 14px', borderRadius: t.radius.sm, cursor:'pointer', fontFamily:'inherit', fontSize: 13,
+ }}>← חזרה לאימונים</button>
+ </div>
+ <History />
+ </>
+ ) : showImport ? (
+ <>
+ <div style={{ marginBottom: 12 }}>
+ <button onClick={() => setShowImport(false)} style={{
+ background:'transparent', border:`1px solid ${t.color.border}`, color: t.color.text,
+ padding:'8px 14px', borderRadius: t.radius.sm, cursor:'pointer', fontFamily:'inherit', fontSize: 13,
+ }}>← חזרה לאימונים</button>
+ </div>
+ <PdfImporter />
+ </>
+ ) : showPrograms ? (
+ <>
+ <div style={{ marginBottom: 12 }}>
+ <button onClick={() => setShowPrograms(false)} style={{
+ background:'transparent', border:`1px solid ${t.color.border}`, color: t.color.text,
+ padding:'8px 14px', borderRadius: t.radius.sm, cursor:'pointer', fontFamily:'inherit', fontSize: 13,
+ }}>← חזרה לאימונים</button>
+ </div>
+ <ProgramsLibrary />
+ </>
+ ) : (
+ <>
+ <Tabs tabs={[
+ { key:'bb', label: 'אימוני כוח' },
+ { key:'crossfit', label: 'WOD' },
+ { key:'running', label: 'ריצה' },
+ ]} active={tab} onChange={setTab} />
+
+ {/* Utility bar — history, programs, PDF import — small buttons */}
+ <div style={{
+ display:'flex', gap: 8, flexWrap:'wrap', marginBottom: 12,
+ justifyContent:'flex-end',
+ }}>
+ <UtilChip onClick={() => setShowHistory(true)}>היסטוריה</UtilChip>
+ <UtilChip onClick={() => setShowPrograms(true)}>תכניות מוכנות</UtilChip>
+ <UtilChip onClick={() => setShowImport(true)}>ייבוא PDF</UtilChip>
+ </div>
+
+ {tab === 'bb' && <BodybuildingHub />}
+ {tab === 'crossfit' && <WodHub />}
+ {tab === 'running' && <RunHub />}
+ </>
+ )}
+ </>
+ )
+}
+
+// Top-level card announcing an active plan — clicks open the full MyPlan view.
+function ActivePlanTopCard({ plan, onOpen }) {
+ return (
+ <button onClick={onOpen} style={{
+ width:'100%', textAlign:'right', fontFamily:'inherit', cursor:'pointer',
+ background: `linear-gradient(135deg, ${t.color.gold}22 0%, ${t.color.bgElevated} 60%)`,
+ border: `1px solid ${t.color.gold}`, borderRadius: t.radius.md,
+ padding: 14, marginBottom: 14, color: t.color.text,
+ display:'flex', gap: 12, alignItems:'center',
+ }}>
+ <div style={{
+ width: 44, height: 44, borderRadius:'50%',
+ background: t.color.gold, color:'#0d0d14',
+ display:'grid', placeItems:'center', flexShrink: 0,
+ fontWeight: 900, fontSize: 18,
+ }}>▶</div>
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <div style={{ fontSize: 11, color: t.color.textDim, letterSpacing:'0.15em', fontWeight: 700 }}>התכנית הפעילה שלך</div>
+ <div style={{ fontSize: 15, fontWeight: 800, color: t.color.gold, marginTop: 2 }}>{plan.name}</div>
+ <div style={{ fontSize: 12, color: t.color.textDim, marginTop: 2 }}>
+ {plan.days || plan.sessions?.length || 3} ימים · {plan.weeks || '—'} שבועות · פתח לביצוע האימון הבא
+ </div>
+ </div>
+ <div style={{ fontSize: 22, color: t.color.gold }}>›</div>
+ </button>
+ )
+}
+
+function UtilChip({ children, onClick }) {
+ return (
+ <button onClick={onClick} style={{
+ padding:'6px 12px', background: t.color.bgSoft,
+ border:`1px solid ${t.color.border}`, borderRadius: 999,
+ color: t.color.textDim, cursor:'pointer', fontFamily:'inherit', fontSize: 12,
+ transition: t.transition,
+ }}
+ onMouseEnter={e => { e.currentTarget.style.borderColor = t.color.gold; e.currentTarget.style.color = t.color.gold }}
+ onMouseLeave={e => { e.currentTarget.style.borderColor = t.color.border; e.currentTarget.style.color = t.color.textDim }}
+ >{children}</button>
  )
 }
 

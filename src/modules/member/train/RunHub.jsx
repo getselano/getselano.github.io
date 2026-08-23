@@ -1,116 +1,32 @@
 import React, { useState } from 'react'
-import { t } from '../../../../theme/tokens'
-import { Card, Button, Badge } from '../../../../components/ui/UI'
-import { useApp } from '../../../../store/AppStore'
-import { WodDisplay } from '../crossfit/WodDisplay'
-import { CrossFitWod } from '../crossfit/WodGenerator'
+import { t } from '../../../theme/tokens'
+import { Card, Button } from '../../../components/ui/UI'
+import { useApp } from '../../../store/AppStore'
+import { WodDisplay } from './crossfit/WodDisplay'
 import {
-  GYMN_FOCUSES, GYMN_PROGRAMS, generateGymnasticsWod, gymnasticsProgramToPlan,
-} from '../../../../data/disciplines/gymnastics'
-import {
-  OLY_FOCUSES, OLY_PROGRAMS, generateWeightliftingWod, weightliftingProgramToPlan,
-} from '../../../../data/disciplines/weightlifting'
-import {
-  HYROX_FOCUSES, HYROX_PROGRAMS, generateHyroxWod, hyroxProgramToPlan,
-} from '../../../../data/disciplines/hyrox'
-import { WOD_LEVELS, levelFromProfile } from '../../../../data/disciplines/levels'
+  RUN_FOCUSES, RUN_PROGRAMS, generateRunningWod, runningProgramToPlan,
+} from '../../../data/disciplines/running'
+import { WOD_LEVELS, levelFromProfile } from '../../../data/disciplines/levels'
 
-// The WOD tab shell: 4 discipline chips at top, each routes to its own
-// generator UI. CrossFit keeps the existing full-featured generator.
-// Running was promoted to its own top-level Train tab.
-
-const DISCIPLINES = [
-  { key:'crossfit',      he:'METCONS'     },
-  { key:'gymnastics',    he:'ג׳ימנסטיקס' },
-  { key:'weightlifting', he:'הנפות'       },
-  { key:'hyrox',         he:'HYROX'       },
-]
-
-export function WodHub() {
-  const [discipline, setDiscipline] = useState('crossfit')
-  return (
-    <div>
-      <DisciplineStrip active={discipline} onChange={setDiscipline} />
-      {discipline === 'crossfit' && <CrossFitWod />}
-      {discipline === 'gymnastics' && (
-        <SimpleDiscipline
-          disciplineKey="gymnastics"
-          focuses={GYMN_FOCUSES}
-          programs={GYMN_PROGRAMS}
-          generate={(focus, ctx) => generateGymnasticsWod({ focus, level: ctx.level })}
-          programToPlan={gymnasticsProgramToPlan}
-        />
-      )}
-      {discipline === 'weightlifting' && (
-        <SimpleDisciplineWithRMs
-          disciplineKey="weightlifting"
-          focuses={OLY_FOCUSES}
-          programs={OLY_PROGRAMS}
-          generate={(focus, ctx) => generateWeightliftingWod({ focus, level: ctx.level, oneRMs: ctx.oneRMs })}
-          programToPlan={(id, ctx) => weightliftingProgramToPlan(id, ctx.oneRMs)}
-        />
-      )}
-      {discipline === 'hyrox' && (
-        <SimpleDiscipline
-          disciplineKey="hyrox"
-          focuses={HYROX_FOCUSES}
-          programs={HYROX_PROGRAMS}
-          generate={(focus, ctx) => generateHyroxWod({ focus, level: ctx.level })}
-          programToPlan={hyroxProgramToPlan}
-        />
-      )}
-    </div>
-  )
-}
-
-function DisciplineStrip({ active, onChange }) {
-  return (
-    <div style={{
-      display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 6,
-      marginBottom: 16,
-    }}>
-      {DISCIPLINES.map(d => {
-        const isActive = active === d.key
-        return (
-          <button key={d.key} onClick={() => onChange(d.key)} style={{
-            padding:'16px 8px',
-            background: isActive
-              ? `linear-gradient(160deg, rgba(199,64,80,0.14), ${t.color.bgElevated} 70%)`
-              : t.color.bgSoft,
-            border: `1px solid ${isActive ? 'rgba(199,64,80,0.55)' : t.color.border}`,
-            borderRadius: t.radius.md, cursor:'pointer',
-            display:'flex', flexDirection:'column', alignItems:'center', gap: 6,
-            fontFamily:'inherit', color: t.color.text,
-            transition: t.transition,
-          }}>
-            <span style={{
-              fontFamily: t.font.family.display, fontWeight: 700,
-              fontSize: 14, letterSpacing:'-0.01em',
-              color: isActive ? t.color.white : t.color.text,
-            }}>{d.he}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-// ─── Generic discipline UI (used by gymnastics) ─────────────
-function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programToPlan, context = {} }) {
+// Standalone Running tab — promoted out of WodHub so runners can jump
+// straight in without the WOD chip step. Same shell as the discipline
+// sub-tab: level → focus → generate, or pick a program to adopt.
+export function RunHub() {
   const { state, logWorkout, setPlan } = useApp()
-  const [mode, setMode] = useState('single') // 'single' | 'program'
+  const [mode, setMode] = useState('single')
   const [focus, setFocus] = useState('random')
   const [level, setLevel] = useState(() => levelFromProfile(state.profile?.experience))
   const [wod, setWod] = useState(null)
+  const fiveKSec = state.profile?.fiveKSeconds || null
 
   const handleGenerate = () => {
-    const result = generate(focus, { ...context, level })
+    const result = generateRunningWod({ focus, level, fiveKSec })
     setWod(result)
     if (typeof window !== 'undefined') window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' })
   }
 
   const adopt = (programId) => {
-    const plan = programToPlan(programId, context)
+    const plan = runningProgramToPlan(programId, fiveKSec)
     if (!plan) return
     setPlan(plan)
     alert(`התכנית "${plan.name}" אומצה. עבור ללשונית "התכנית שלי"`)
@@ -120,21 +36,20 @@ function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programT
     if (!wod) return
     logWorkout({
       date: new Date().toISOString(),
-      sessionName: `${labelFor(disciplineKey)} — ${wod.title}`,
+      sessionName: `Running — ${wod.title}`,
       exercises: [],
-      wodMeta: { discipline: disciplineKey, focus: wod.focus, lines: wod.lines },
+      wodMeta: { discipline:'running', focus: wod.focus, lines: wod.lines },
     })
     alert('נשמר בהיסטוריה!')
   }
 
   return (
     <div>
-      {/* Mode toggle */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8, marginBottom: 14 }}>
         <ModeCard active={mode === 'single'} onClick={() => setMode('single')}
           title="אימון בודד" sub="חד־פעמי · היום" />
         <ModeCard active={mode === 'program'} onClick={() => setMode('program')}
-          title="תכנית" sub={`${programs[0]?.weeks || 8} שבועות · פרוגרסיה`} />
+          title="תכנית" sub={`${RUN_PROGRAMS[0]?.weeks || 8} שבועות · פרוגרסיה`} />
       </div>
 
       {mode === 'single' ? (
@@ -164,7 +79,7 @@ function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programT
               color: t.color.silver1, fontWeight: 700, textTransform:'uppercase', marginBottom: 10,
             }}>פוקוס</div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(100px, 1fr))', gap: 6 }}>
-              {focuses.map(f => (
+              {RUN_FOCUSES.map(f => (
                 <button key={f.key} onClick={() => setFocus(f.key)} style={{
                   padding:'12px 6px',
                   background: focus === f.key ? `${t.color.wineLight}22` : t.color.bgSoft,
@@ -178,6 +93,17 @@ function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programT
             </div>
           </Card>
 
+          {!fiveKSec && (
+            <Card style={{ marginBottom: 12, background: `${t.color.warning}12`, border: `1px solid ${t.color.warning}` }}>
+              <div style={{ fontSize: 13, color: t.color.warning, fontWeight: 700, marginBottom: 4 }}>
+                עדיין לא הגדרת שיא 5K
+              </div>
+              <div style={{ fontSize: 12, color: t.color.textDim }}>
+                בלי שיא 5K נראה רק תיאור אימון בלי קצבים מומלצים. עבור לפרופיל כדי להזין.
+              </div>
+            </Card>
+          )}
+
           <Button
             variant="primary" size="lg" onClick={handleGenerate}
             style={{
@@ -186,7 +112,7 @@ function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programT
               border:`1px solid ${t.color.wineLight}`,
               padding: 16, marginBottom: 16,
             }}
-          >← צור אימון</Button>
+          >← צור אימון ריצה</Button>
 
           {wod && (
             <>
@@ -205,7 +131,7 @@ function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programT
             color: t.color.silver1, fontWeight: 700, textTransform:'uppercase', marginBottom: 10,
           }}>בחר תכנית · לחיצה מאמצת אותה כתכנית שלך</div>
           <div style={{ display:'grid', gap: 10 }}>
-            {programs.map(p => (
+            {RUN_PROGRAMS.map(p => (
               <Card key={p.id} hover style={{ cursor:'pointer' }} onClick={() => {
                 if (confirm(`לאמץ "${p.label}" כתכנית הפעילה שלך?`)) adopt(p.id)
               }}>
@@ -237,13 +163,6 @@ function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programT
   )
 }
 
-// Wrapper that injects the user's 1RMs from profile for weightlifting
-function SimpleDisciplineWithRMs(props) {
-  const { state } = useApp()
-  const oneRMs = state.profile?.oneRMs || {}
-  return <SimpleDiscipline {...props} context={{ oneRMs }} />
-}
-
 function ModeCard({ active, onClick, title, sub }) {
   return (
     <button onClick={onClick} style={{
@@ -260,13 +179,4 @@ function ModeCard({ active, onClick, title, sub }) {
       <div style={{ fontSize: 11, color: t.color.silver2, marginTop: 3, letterSpacing:'0.04em' }}>{sub}</div>
     </button>
   )
-}
-
-function labelFor(discipline) {
-  return {
-    gymnastics: 'Gymnastics',
-    weightlifting: 'Weightlifting',
-    running: 'Running',
-    hyrox: 'HYROX',
-  }[discipline] || 'WOD'
 }

@@ -92,6 +92,8 @@ function matchFallback(text) {
 // corner relative to the viewport, clamped on load so a smaller
 // window on this device doesn't leave the button off-screen.
 const POS_KEY = 'hfos:assistant_pos'
+// sessionStorage — X hides the bubble until the tab is re-opened.
+const HIDDEN_KEY = 'hfos:assistant_hidden'
 const BUTTON_SIZE = 58
 const PANEL_W = 360
 const PANEL_H = 520
@@ -143,6 +145,15 @@ export function FloatingAssistant({ onOpenMentalCoach, onNavigate }) {
  const [messages, setMessages] = useState([])
  const [input, setInput] = useState('')
  const [thinking, setThinking] = useState(false)
+ // Hidden-for-session — X closes the bubble until the tab is re-opened.
+ const [hidden, setHidden] = useState(() => {
+   if (typeof window === 'undefined') return false
+   try { return sessionStorage.getItem(HIDDEN_KEY) === '1' } catch { return false }
+ })
+ const hide = () => {
+   try { sessionStorage.setItem(HIDDEN_KEY, '1') } catch {}
+   setHidden(true)
+ }
  const scrollRef = useRef(null)
 
  // Draggable position — default: bottom-left corner (matches old design)
@@ -289,9 +300,16 @@ export function FloatingAssistant({ onOpenMentalCoach, onNavigate }) {
 
  const panelPos = panelPosFor(pos)
 
+ // Session-hidden — user dismissed the bubble; comes back on new session.
+ if (hidden) return null
+
  return (
  <>
  {!open && (
+ <div style={{
+ position:'fixed', left: pos.x, top: pos.y, zIndex: 900,
+ width: BUTTON_SIZE, height: BUTTON_SIZE,
+ }}>
  <button
  onPointerDown={onPointerDown}
  onPointerMove={onPointerMove}
@@ -299,9 +317,8 @@ export function FloatingAssistant({ onOpenMentalCoach, onNavigate }) {
  aria-label="פתח את המדריך — לחץ ארוך לגרירה"
  title="גרור להזזה · לחיצה לפתיחה"
  style={{
- position:'fixed',
- left: pos.x, top: pos.y, zIndex: 900,
- width: BUTTON_SIZE, height: BUTTON_SIZE, borderRadius:'50%',
+ position:'absolute', inset: 0,
+ width:'100%', height:'100%', borderRadius:'50%',
  background: t.color.gold, color:'#0d0d14',
  border:'none',
  cursor: dragState.current.moved ? 'grabbing' : 'grab',
@@ -315,6 +332,23 @@ export function FloatingAssistant({ onOpenMentalCoach, onNavigate }) {
  onMouseEnter={e => { if (!dragState.current.dragging) e.currentTarget.style.transform = 'scale(1.08)' }}
  onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
  > AI</button>
+ {/* X — dismiss until re-entry */}
+ <button
+ onClick={hide}
+ aria-label="סגור מדריך AI לסשן הזה"
+ title="הסתר עד כניסה מחדש למערכת"
+ style={{
+ position:'absolute', top: -6, insetInlineEnd: -6,
+ width: 22, height: 22, borderRadius:'50%',
+ background: t.color.bgElevated, color: t.color.text,
+ border: `1px solid ${t.color.border}`,
+ cursor:'pointer', fontFamily:'inherit', fontWeight: 900,
+ fontSize: 12, lineHeight: 1, padding: 0,
+ display:'grid', placeItems:'center',
+ boxShadow:'0 2px 6px rgba(0,0,0,.4)',
+ }}
+ >×</button>
+ </div>
  )}
 
  {open && (
