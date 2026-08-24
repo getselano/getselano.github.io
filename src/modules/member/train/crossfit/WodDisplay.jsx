@@ -4,6 +4,7 @@ import { Card, Button, Badge } from '../../../../components/ui/UI'
 import { FORMATS } from '../../../../data/crossfit/formats'
 import { getSubs } from '../../../../data/crossfit/substitutions'
 import { PublishWorkoutButton } from '../../../../components/community/PublishWorkoutButton'
+import { movementName } from '../../../../data/movementName'
 
 // WOD Display — the monospace "written prescription"panel, wod-gpt style.
 // Includes copy-to-clipboard and video-tips expander.
@@ -123,8 +124,8 @@ function MovementRow({ movement }) {
           fontFamily:'Space Mono, ui-monospace, monospace',
           fontSize: 14, fontWeight: 700, color: t.color.gold,
           letterSpacing:'-0.005em',
-        }}>{movement.en || movement.he}</div>
-        <div style={{ fontSize: 11, color: t.color.silver2, direction:'rtl' }}>· {movement.he}</div>
+        }}>{movementName(movement)}</div>
+        
         {hasSubs && (
           <div style={{
             marginInlineStart:'auto', fontSize: 10,
@@ -152,8 +153,8 @@ function MovementRow({ movement }) {
                   fontFamily:'Space Mono, ui-monospace, monospace',
                   fontSize: 13, fontWeight: 700, color: t.color.text,
                   direction:'ltr',
-                }}>{sub.movement.en || sub.movement.he}</span>
-                <span style={{ fontSize: 11, color: t.color.silver2 }}>· {sub.movement.he}</span>
+                }}>{movementName(sub.movement)}</span>
+                
                 <span style={{
                   marginInlineStart:'auto',
                   fontSize: 9, fontWeight: 700, letterSpacing:'0.1em',

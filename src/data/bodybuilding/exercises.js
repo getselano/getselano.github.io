@@ -65,8 +65,12 @@ export const EQUIPMENT = {
 }
 
 // Compact builder to keep the catalog readable
+// `name` is what the app shows, and it is the English one — see
+// data/movementName.js for why. `he` stays on the record so Hebrew typing
+// still finds the exercise in search; it is never rendered.
 const ex = (id, he, en, primary, opts = {}) => ({
   id, he, en,
+  name: en,
   primaryMuscle: primary,
   secondaryMuscles: opts.secondary || [],
   equipment: opts.equipment || 'bodyweight',

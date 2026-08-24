@@ -20,8 +20,11 @@ export const CATEGORIES = {
 }
 
 // Base builder — keeps the JSON compact while preserving the full schema.
+// `name` is the displayed one and is always English — see
+// data/movementName.js. `he` is retained for search only.
 const mv = (id, he, en, category, opts = {}) => ({
   id, he, en, category,
+  name: en,
   equipment: opts.equipment || [],
   contraindications: opts.contraindications || [],
   ytId: opts.ytId || null,

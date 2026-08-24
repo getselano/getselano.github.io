@@ -8,6 +8,7 @@ import { EXERCISE_BY_ID } from '../../../../data/bodybuilding/exercises'
 import { RoutineBuilder } from './RoutineBuilder'
 import { RoutineRunner } from './RoutineRunner'
 import { PublishWorkoutButton } from '../../../../components/community/PublishWorkoutButton'
+import { movementName } from '../../../../data/movementName'
 
 // User's saved routines + system routines from active program.
 export function MyRoutines() {
@@ -123,7 +124,7 @@ function RoutineCard({ routine, isSystem, onRun, onEdit, onDelete }) {
  <div style={{ display:'flex', gap: 4, flexWrap:'wrap'}}>
  {(routine.exercises || []).slice(0, 3).map((ex, i) => {
  const cataloged = EXERCISE_BY_ID[ex.exerciseId]
- const label = cataloged?.he || ex.exerciseName || ex.name
+ const label = movementName(cataloged) || ex.exerciseName || ex.name
  return label ? (
  <span key={i} style={{
  fontSize: t.font.xs, color: t.color.textDim,

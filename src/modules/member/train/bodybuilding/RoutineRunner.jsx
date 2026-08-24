@@ -6,6 +6,7 @@ import { EXERCISE_BY_ID, EQUIPMENT } from '../../../../data/bodybuilding/exercis
 import { calculatePlates, platesNotation } from '../../../../data/bodybuilding/calculators'
 import { Kicker, SectionHead, Label, Button as SButton } from '../../../../design/components/primitives'
 import { ExerciseGuideButton } from '../../../../components/train/ExerciseGuidePopover'
+import { movementName } from '../../../../data/movementName'
 
 // Progress persists across close/reopen — user asked for
 // "לא להתאפס אחרי אימון אלא אם לחצי על לאפס".
@@ -152,7 +153,7 @@ export function RoutineRunner({ routine, open, onClose }) {
  const exercise = EXERCISE_BY_ID[ex.exerciseId]
  return {
  id: ex.exerciseId || null,
- name: exercise?.he || ex.exerciseName || ex.name || 'תרגיל',
+ name: movementName(exercise) || ex.exerciseName || ex.name || 'תרגיל',
  sets: (ex.sets || []).filter(s => s.completed).map(s => ({
  w: s.actualWeight, r: s.actualReps, type: s.type,
  })),
@@ -349,7 +350,7 @@ export function RoutineRunner({ routine, open, onClose }) {
  color: t.color.white,
  letterSpacing:'-0.025em',
  lineHeight: 1.05,
- }}>{exercise.he}</div>
+ }}>{movementName(exercise)}</div>
  <div style={{ marginTop: 6, display:'flex', alignItems:'center', gap: 8, flexWrap:'wrap' }}>
  <Label>
  {completedWorking}/{workingSetsCount} סטים · מנוחה {ex.restSeconds}s
@@ -387,7 +388,7 @@ export function RoutineRunner({ routine, open, onClose }) {
  {!collapsed && (
  <div onClick={e => e.stopPropagation()} style={{ marginBottom: 4 }}>
    <div style={{ marginBottom: 10 }}>
-     <ExerciseGuideButton exerciseName={exercise.he} compact />
+     <ExerciseGuideButton exerciseName={movementName(exercise)} compact />
    </div>
  </div>
  )}

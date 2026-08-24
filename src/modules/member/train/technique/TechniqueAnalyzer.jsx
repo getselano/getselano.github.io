@@ -11,6 +11,7 @@ import {
   saveClip, attachCoaching, listClips, getClip, deleteClip, deleteAllClips,
   purgeExpired, archiveStats, formatBytes, daysLeft, takeSaveError, RETENTION_DAYS,
 } from '../../../../services/techniqueArchive'
+import { movementName } from '../../../../data/movementName'
 
 // Technique review. Three taps to the analysis: pick the movement, hand over
 // a clip, read the report.
@@ -259,7 +260,7 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
       <BackRow onClose={() => (phase === 'idle' ? setMovement(null) : reset())}
         label={phase === 'idle' ? '← בחר תרגיל אחר' : '← התחל מחדש'} />
 
-      <SectionHeader title={movement.he} subtitle={movement.en} />
+      <SectionHeader title={movementName(movement)} subtitle={movement.he} />
 
       {phase === 'idle' && (
         <>
@@ -1015,7 +1016,7 @@ function MovementRow({ movement: m, onPick, showGroup }) {
     onMouseLeave={e => { e.currentTarget.style.borderColor = t.color.border }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: t.color.gold }}>{m.he}</div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: t.color.gold }}>{movementName(m)}</div>
         <div style={{ fontSize: 11, color: t.color.textDim, marginTop: 2 }}>
           {m.en}{showGroup && m.groupLabel ? ` · ${m.groupLabel}` : ''}
         </div>

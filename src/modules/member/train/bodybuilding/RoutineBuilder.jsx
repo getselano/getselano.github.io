@@ -7,6 +7,7 @@ import { ExerciseGuideButton } from '../../../../components/train/ExerciseGuideP
 import { modeFromState, activeGoal, TRAINING_MODES } from '../../../../data/trainingMode'
 import { FreeformBuilder } from './FreeformBuilder'
 import { PublishWorkoutButton } from '../../../../components/community/PublishWorkoutButton'
+import { movementName, matchesQuery } from '../../../../data/movementName'
 
 // ─── Level & goal presets ─────────────────────────────────
 // 4 levels, each layers on intensifiers (supersets, dropsets)
@@ -21,7 +22,7 @@ const LEVELS = {
 // stays consistent with onboarding + TrainerGenerator.
 const GOALS = Object.fromEntries(
   Object.entries(TRAINING_MODES).map(([key, m]) => [
-    key, { he: m.he, en: m.en, reps: m.repRange, rest: m.restSeconds },
+    key, { he: movementName(m), en: m.en, reps: m.repRange, rest: m.restSeconds },
   ])
 )
 
@@ -30,7 +31,7 @@ const ALL_MUSCLES = (() => {
   const out = []
   Object.values(MUSCLE_GROUPS).forEach(section => {
     Object.entries(section.muscles || {}).forEach(([key, m]) => {
-      out.push({ key, he: m.he, en: m.en })
+      out.push({ key, he: movementName(m), en: m.en })
     })
   })
   return out
@@ -720,7 +721,7 @@ function ExerciseInRoutine({ exerciseInRoutine: ex, idx, supersetBadge, groupSiz
             }} title={`סופרסט ${letter}`}>{letter}</span>
           )}
           <span style={{ fontSize: 22 }}>{EQUIPMENT[ex.equipment]?.icon || ''}</span>
-          <b style={{ color: t.color.wineLight, flex: 1, minWidth: 100, fontSize: t.font.md }}>{exercise.he}</b>
+          <b style={{ color: t.color.wineLight, flex: 1, minWidth: 100, fontSize: t.font.md }}>{movementName(exercise)}</b>
           <ExerciseGuideButton exercise={exercise} compact />
           <button onClick={onDelete} style={{
             background: 'transparent', border: `1px solid ${t.color.border}`,
@@ -865,13 +866,13 @@ function ExercisePicker({ open, onClose, onSelect }) {
     let out = EXERCISES
     if (query.trim()) {
       const q = query.trim().toLowerCase()
-      out = out.filter(e => e.he?.toLowerCase().includes(q) || e.en?.toLowerCase().includes(q))
+      out = out.filter(e => matchesQuery(e, q))
     }
     if (mode === 'muscle' && activeMuscle) {
       out = out.filter(e => e.primaryMuscle === activeMuscle)
     }
     if (mode === 'alpha') {
-      out = [...out].sort((a, b) => (a.he || '').localeCompare(b.he || '', 'he'))
+      out = [...out].sort((a, b) => movementName(a).localeCompare(movementName(b), 'en'))
     }
     return out.slice(0, 150)
   }, [query, mode, activeMuscle])
@@ -914,7 +915,7 @@ function ExercisePicker({ open, onClose, onSelect }) {
             }}>
               <span style={{ fontSize: 18 }}>{EQUIPMENT[ex.equipment]?.icon || ''}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: t.color.wineLight, fontWeight: 600 }}>{ex.he}</div>
+                <div style={{ color: t.color.wineLight, fontWeight: 600 }}>{movementName(ex)}</div>
                 <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>{ex.en}</div>
               </div>
             </button>

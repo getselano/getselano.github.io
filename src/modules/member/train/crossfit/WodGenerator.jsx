@@ -10,6 +10,7 @@ import { WodDisplay } from './WodDisplay'
 import { WodTimer } from './WodTimer'
 import { BenchmarkList } from './BenchmarkList'
 import { useI18n } from '../../../../i18n/i18n'
+import { movementName } from '../../../../data/movementName'
 
 const INTENTS = [
  { key:'general',    he:'כללי',      icon:'', desc:'אימון מאוזן'},
@@ -91,7 +92,7 @@ function Generator() {
  date: result.completedAt,
  sessionName: `WOD — ${result.wod.title}`,
  exercises: (result.wod.movements || []).map(m => ({
- id: m.id, name: m.he, sets: [{ w: 0, r: 0, rpe: 0 }],
+ id: m.id, name: movementName(m), sets: [{ w: 0, r: 0, rpe: 0 }],
  })),
  wodMeta: {
  format: result.wod.format,
@@ -135,7 +136,7 @@ function Generator() {
  color: t.color.text, fontSize: t.font.sm, cursor:'pointer',
  display:'inline-flex', alignItems:'center', gap: 6,
  }}>
- {m.he} <span style={{ color: t.color.textMuted }}>×</span>
+ {movementName(m)} <span style={{ color: t.color.textMuted }}>×</span>
  </span>
  )
  })}

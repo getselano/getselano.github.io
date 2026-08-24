@@ -8,6 +8,7 @@ import {
   EQUIPMENT, DURATIONS, FORMATS, INTENSITIES, GOALS,
   buildCustomWod, availableMovements, unlockHints,
 } from '../../../../data/disciplines/customBuilder'
+import { movementName } from '../../../../data/movementName'
 
 // Build-your-own session. Equipment first, because that is the constraint the
 // user actually has — everything below it is a preference.
@@ -199,7 +200,7 @@ export function CustomWodBuilder({ discipline }) {
               <div style={{ display:'grid', gap: 6 }}>
                 {wod.meta.substitutions.map((s, i) => (
                   <div key={i} style={{ fontSize: 12, color: t.color.textDim, lineHeight: 1.6 }}>
-                    <b style={{ color: t.color.text }}>{s.he}</b> — מאמן את אותה יכולת כמו {s.standsFor}
+                    <b style={{ color: t.color.text }}>{movementName(s)}</b> — מאמן את אותה יכולת כמו {s.standsFor}
                   </div>
                 ))}
               </div>

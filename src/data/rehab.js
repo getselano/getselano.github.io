@@ -39,10 +39,10 @@ export const protocols = {
     duration: 4,
     principles:['עומס הדרגתי','טווח תנועה לפני חיזוק','אין כאב מעל 4/10 באימון','נוחות עדיפה על מהירות'],
     weeks:[
-      { week:1, focus:'מוביליטי + הפעלת שרוול מסובבים', exercises:['פנדולום 2×10 כל כיוון','גומייה - סיבוב חיצוני 3×15','פליפ טי-רוקס 2×15','שכמות אקטיביות 3×10','חתירה מולה עם גומייה 3×12'] },
-      { week:2, focus:'חיזוק בטווח בטוח',                exercises:['סיבוב חיצוני עם משקל קל 3×12','חתירה עם גומייה 3×15','לחיצת קיר 3×12','face pull 3×15','שכמות שוכב 3×10'] },
-      { week:3, focus:'הכנסת פונקציה + עומס',            exercises:['לחיצה עם משקולות ישיבה 3×10','חתירה בכבל 3×12','לטראל קטן 3×12','face pull 3×15','דד-האנג 3×20ש׳'] },
-      { week:4, focus:'חזרה מודרגת לתרגילי כוח',        exercises:['לחיצת חזה קל 3×10','לחיצת כתפיים ישיבה 3×8','חתירה 4×10','ovhd קרול 3×10','שכיבות שמיכה 3×אמת'] },
+      { week:1, focus:'מוביליטי + הפעלת שרוול מסובבים', exercises:['Pendulum 2×10 כל כיוון','Band External Rotation 3×15','Prone T Raise 2×15','Scapular Retraction 3×10','Band Row 3×12'] },
+      { week:2, focus:'חיזוק בטווח בטוח',                exercises:['Light External Rotation 3×12','Band Row 3×15','Wall Press 3×12','face pull 3×15','Prone Scapular Retraction 3×10'] },
+      { week:3, focus:'הכנסת פונקציה + עומס',            exercises:['Seated Dumbbell Press 3×10','Cable Row 3×12','Light Lateral Raise 3×12','face pull 3×15','Dead Hang 3×20ש׳'] },
+      { week:4, focus:'חזרה מודרגת לתרגילי כוח',        exercises:['Light Bench Press 3×10','Seated Shoulder Press 3×8','Row 4×10','Overhead Carry 3×10','Push-up 3×אמת'] },
     ],
   },
   lower_back: {
@@ -50,10 +50,10 @@ export const protocols = {
     duration: 4,
     principles:['מוביליטי ירך = פחות עומס גב','ליבה = הגנה','להוציא מ-flexion קיצוני','הליכה יומית חובה'],
     weeks:[
-      { week:1, focus:'שיכוך + מוביליטי ירך',            exercises:['ברך לחזה 2×10','חתול-פרה 2×10','בירד דוג 3×8','דד באג 3×8','הליכה 20 דק׳'] },
-      { week:2, focus:'הפעלת ליבה עמוקה',                 exercises:['פלאנק 3×20ש׳','גשר ישבן 3×12','בירד דוג 3×10','גומייה מקסימלית ליישוב אגן','הליכה 30 דק׳'] },
-      { week:3, focus:'העמסה הדרגתית',                    exercises:['גשר עם עומס 3×10','דד ליפט טכני קל 3×5','פלאנק צד 3×20ש׳','farmers carry 3×20מ׳','goblet squat 3×8'] },
-      { week:4, focus:'תנועה פונקציונלית',                exercises:['דד ליפט 3×5 (עומס בינוני)','סקוואט 3×8','בירד דוג 3×10','פרונט קארי 3×20מ׳','טמפו רגל אחת 3×8'] },
+      { week:1, focus:'שיכוך + מוביליטי ירך',            exercises:['Knee to Chest 2×10','Cat-Cow 2×10','Bird Dog 3×8','Dead Bug 3×8','Walk 20 דק׳'] },
+      { week:2, focus:'הפעלת ליבה עמוקה',                 exercises:['Plank 3×20ש׳','Glute Bridge 3×12','Bird Dog 3×10','Band Pelvic Reset','Walk 30 דק׳'] },
+      { week:3, focus:'העמסה הדרגתית',                    exercises:['Loaded Glute Bridge 3×10','Light Technical Deadlift 3×5','Side Plank 3×20ש׳','farmers carry 3×20מ׳','goblet squat 3×8'] },
+      { week:4, focus:'תנועה פונקציונלית',                exercises:['Deadlift 3×5 (עומס בינוני)','Squat 3×8','Bird Dog 3×10','Front Carry 3×20מ׳','Single-Leg Tempo 3×8'] },
     ],
   },
   knee: {
@@ -61,10 +61,10 @@ export const protocols = {
     duration: 4,
     principles:['ישבן חלש = ברך חלשה','אקסצנטרי לגידים','לפחות חצי סקוואט כדי לא לעצור לגמרי','קרח לאחר אימון'],
     weeks:[
-      { week:1, focus:'טווח + הפעלה',                     exercises:['ISO quad set 3×20ש׳','sTraight leg raise 3×10','side lying leg raise 3×12','wall sit 3×20ש׳','גשר ישבן 3×12'] },
-      { week:2, focus:'חיזוק בטווח נוח',                  exercises:['step up נמוך 3×10','גשר ישבן על רגל אחת 3×8','clamshell 3×15','wall sit 3×40ש׳','קלנדר קליטה'] },
-      { week:3, focus:'סקוואט עם עומס נמוך',              exercises:['גובלט סקוואט 3×10','split squat קצר 3×8','step up גבוה 3×10','nordic curl אקסצנטרי 2×5','leg press קל 3×12'] },
-      { week:4, focus:'חזרה למשקולות',                    exercises:['סקוואט אחורי 3×6','לאנג׳ הליכה 3×10','RDL 3×8','leg extension בטווח קצר 3×12','box jump נמוך 3×5'] },
+      { week:1, focus:'טווח + הפעלה',                     exercises:['ISO quad set 3×20ש׳','sTraight leg raise 3×10','side lying leg raise 3×12','wall sit 3×20ש׳','Glute Bridge 3×12'] },
+      { week:2, focus:'חיזוק בטווח נוח',                  exercises:['Low Step-up 3×10','Single-Leg Glute Bridge 3×8','clamshell 3×15','wall sit 3×40ש׳','Calendar Check-in'] },
+      { week:3, focus:'סקוואט עם עומס נמוך',              exercises:['Goblet Squat 3×10','Short Split Squat 3×8','High Step-up 3×10','Eccentric Nordic Curl 2×5','Light Leg Press 3×12'] },
+      { week:4, focus:'חזרה למשקולות',                    exercises:['Back Squat 3×6','Walking Lunge 3×10','RDL 3×8','Short-Range Leg Extension 3×12','Low Box Jump 3×5'] },
     ],
   },
   neck: {
@@ -72,10 +72,10 @@ export const protocols = {
     duration: 4,
     principles:['חיזוק צוואר עמוק > מתיחה','לצאת מ-forward head posture','ארגונומיה במחשב','הפסקות תנועה כל שעה'],
     weeks:[
-      { week:1, focus:'שחרור + הפעלה',                    exercises:['chin tuck 3×10','סיבובים איטיים 2×5 כל כיוון','שחרור טרפז עליון','מתיחות טרפז 2×30ש׳','נשימה סרעפתית 5 דק׳'] },
-      { week:2, focus:'חיזוק צווארי עמוק',               exercises:['chin tuck נגד קיר 3×10','פרונאציה מבוקרת 3×8','שכמות פנימה 3×15','מתיחת חזה בפינה 3×30ש׳','face pull 3×15'] },
-      { week:3, focus:'חיזוק גב עליון',                   exercises:['face pull 3×15','חתירה 3×12','Y-T-W שכיבה 2×10','שכמות עומדות עם גומייה 3×15','לחיצת חזה עדין 3×10'] },
-      { week:4, focus:'הטמעה יומיומית',                   exercises:['תזכורות יציבה כל שעה','5 דק׳ חימום צוואר לפני אימון','face pull חובה בכל אימון עליון','אין טלפון בשכיבה','שינה על כרית בגובה נכון'] },
+      { week:1, focus:'שחרור + הפעלה',                    exercises:['chin tuck 3×10','Slow Rotations 2×5 כל כיוון','Upper Trap Release','Trap Stretch 2×30ש׳','Diaphragmatic Breathing 5 דק׳'] },
+      { week:2, focus:'חיזוק צווארי עמוק',               exercises:['Wall Chin Tuck 3×10','Controlled Pronation 3×8','Scapular Squeeze 3×15','Corner Chest Stretch 3×30ש׳','face pull 3×15'] },
+      { week:3, focus:'חיזוק גב עליון',                   exercises:['face pull 3×15','Row 3×12','Prone Y-T-W 2×10','Standing Band Retraction 3×15','Gentle Bench Press 3×10'] },
+      { week:4, focus:'הטמעה יומיומית',                   exercises:['Posture Reminders כל שעה','5 דק׳ Neck Warm-up Before Training','face pull חובה בכל אימון עליון','No Phone Lying Down','Correct Pillow Height'] },
     ],
   },
   ankle: {
@@ -83,10 +83,10 @@ export const protocols = {
     duration: 4,
     principles:['נעל תומכת בהתחלה','להימנע ממשטחים לא-יציבים בשבועיים הראשונים','חיזוק שרירי השוק','חזרה הדרגתית לריצה'],
     weeks:[
-      { week:1, focus:'טווח + הפחתת בצקת',                exercises:['ABC עם רגל 2×2','פלקסיה/אקסטנציה 3×20','מעגלים 3×10','קרח 15 דק׳ אחרי','דרך רגל אחת (שניות)'] },
-      { week:2, focus:'חיזוק בסיסי',                      exercises:['עמידה על אצבעות 3×15','גומייה - כל הכיוונים 3×12','טווח שוק על מדרגה 3×10','עמידה על רגל אחת עצומות עיניים 3×20ש׳','הליכה מלאה'] },
-      { week:3, focus:'פרופריוצפציה + כוח',               exercises:['בוסו/כרית - עמידה 3×30ש׳','ירידה לפיקה 3×12','דילוגים קלים 3×10','side hops 3×10','זמן על רגל אחת 3×45ש׳'] },
-      { week:4, focus:'חזרה לפעילות',                     exercises:['ריצה קלה 15 דק׳','זיגזג 3×20מ׳','דילוגים 3×15','קפיצה ונחיתה על שתי רגליים 3×5','משחק ספורט קליל'] },
+      { week:1, focus:'טווח + הפחתת בצקת',                exercises:['Foot ABCs 2×2','Flexion / Extension 3×20','Circles 3×10','Ice 15 דק׳ אחרי','Single-Leg Balance (שניות)'] },
+      { week:2, focus:'חיזוק בסיסי',                      exercises:['Calf Raise 3×15','Band All Directions 3×12','Calf Stretch on Step 3×10','Single-Leg Balance, Eyes Closed 3×20ש׳','Full Walk'] },
+      { week:3, focus:'פרופריוצפציה + כוח',               exercises:['Bosu / Cushion Balance 3×30ש׳','Eccentric Heel Drop 3×12','Light Skips 3×10','side hops 3×10','Single-Leg Hold 3×45ש׳'] },
+      { week:4, focus:'חזרה לפעילות',                     exercises:['Easy Run 15 דק׳','Zig-Zag Run 3×20מ׳','Skips 3×15','Two-Foot Jump and Land 3×5','Light Sport Play'] },
     ],
   },
   hip: {
@@ -94,10 +94,10 @@ export const protocols = {
     duration: 4,
     principles:['גלוט מדיוס = יציבות אגן','להימנע מ-hip drop בהליכה','חיזוק במקום מתיחה כשיש חוסר יציבות'],
     weeks:[
-      { week:1, focus:'הפעלה',                            exercises:['clamshell 3×15','side lying leg raise 3×12','גשר ישבן 3×12','fire hydrant 3×10','מרחיב ירך על ארבע 3×10'] },
-      { week:2, focus:'חיזוק בעומס',                      exercises:['גשר ישבן על רגל אחת 3×8','side plank 3×20ש׳','monster walk 3×20צע׳','deficit split squat 3×8','clamshell עם גומייה 3×12'] },
-      { week:3, focus:'תנועה מורכבת',                     exercises:['step up 3×10','לאנג׳ הליכה 3×12','דיאדליפט רומני 3×10','side plank הרמת רגל 3×8','גומייה - סקוואט 3×12'] },
-      { week:4, focus:'ספורט-ספציפי',                     exercises:['סקוואט עם עומס 3×8','לאנג׳ 3×10 כל רגל','דדליפט 3×5','מקפצה 3×5','ריצה קלה 20 דק׳'] },
+      { week:1, focus:'הפעלה',                            exercises:['clamshell 3×15','side lying leg raise 3×12','Glute Bridge 3×12','fire hydrant 3×10','Quadruped Hip Abduction 3×10'] },
+      { week:2, focus:'חיזוק בעומס',                      exercises:['Single-Leg Glute Bridge 3×8','side plank 3×20ש׳','monster walk 3×20צע׳','deficit split squat 3×8','Banded Clamshell 3×12'] },
+      { week:3, focus:'תנועה מורכבת',                     exercises:['Step-up 3×10','Walking Lunge 3×12','Romanian Deadlift 3×10','Side Plank with Leg Raise 3×8','Banded Squat 3×12'] },
+      { week:4, focus:'ספורט-ספציפי',                     exercises:['Loaded Squat 3×8','Lunge 3×10 כל רגל','Deadlift 3×5','Box Jump 3×5','Easy Run 20 דק׳'] },
     ],
   },
   wrist_elbow: {
@@ -105,10 +105,10 @@ export const protocols = {
     duration: 4,
     principles:['אקסצנטריות מרפאות גידים','להימנע מפעולות מחמירות שבועיים','ארגונומיה של מקלדת/עכבר','חיזוק אחיזה'],
     weeks:[
-      { week:1, focus:'שחרור + מוביליטי',                 exercises:['מתיחת אקסטנסורים 3×30ש׳','מתיחת פלקסורים 3×30ש׳','שחרור אמה עם כדור','טווח שורש יד 3×10','אחיזה חלשה של כדור ספוג 3×20'] },
-      { week:2, focus:'חיזוק אקסצנטרי',                   exercises:['אקסצנטרי שורש יד עם משקל 3×15','פוליש/סופינציה עם משקל 3×15','עבודה עם כדור אחיזה','farmers walk 3×20מ׳','ריבר קרל 3×15'] },
-      { week:3, focus:'חיזוק תפקודי',                     exercises:['dead hang 3×20ש׳','אחיזה - fat grip 3×10','פוש-אפ ידיים חזקות 3×10','ריבר קרל עם משקל 3×12','שורש יד אקסצנטרי עומס בינוני 3×12'] },
-      { week:4, focus:'חזרה מלאה',                        exercises:['pull up 3×5','curl 3×10','מתח 3×אמת','שכיבות שמיכה 3×אמת','tricep pushdown 3×12'] },
+      { week:1, focus:'שחרור + מוביליטי',                 exercises:['Extensor Stretch 3×30ש׳','Flexor Stretch 3×30ש׳','Forearm Ball Release','Wrist Range of Motion 3×10','Soft Ball Squeeze 3×20'] },
+      { week:2, focus:'חיזוק אקסצנטרי',                   exercises:['Weighted Eccentric Wrist Curl 3×15','Weighted Pronation / Supination 3×15','Grip Ball Work','farmers walk 3×20מ׳','Reverse Curl 3×15'] },
+      { week:3, focus:'חיזוק תפקודי',                     exercises:['dead hang 3×20ש׳','Fat Grip Hold 3×10','Push-up, Strong Wrists 3×10','Weighted Reverse Curl 3×12','Eccentric Wrist Curl, Moderate Load 3×12'] },
+      { week:4, focus:'חזרה מלאה',                        exercises:['pull up 3×5','curl 3×10','Pull-up 3×אמת','Push-up 3×אמת','tricep pushdown 3×12'] },
     ],
   },
   core: {
@@ -116,10 +116,10 @@ export const protocols = {
     duration: 4,
     principles:['ליבה = יציבות, לא sit-ups','נשימה במהלך התרגיל','anti-flexion/rotation/extension'],
     weeks:[
-      { week:1, focus:'הפעלה',                            exercises:['נשימה סרעפתית 3×10','dead bug 3×8','bird dog 3×10','ISO plank 3×20ש׳','גשר ישבן 3×12'] },
-      { week:2, focus:'תוספת עומס',                       exercises:['plank 3×30ש׳','side plank 3×20ש׳','dead bug עם עומס 3×8','pallof press 3×10','דד ליפט טכני 3×5'] },
-      { week:3, focus:'anti-rotation',                    exercises:['pallof press 3×12','farmers carry 3×30מ׳','plank pull-through 3×8','דד באג עם כבל 3×10','side plank הרמת רגל 3×8'] },
-      { week:4, focus:'שילוב אימון',                      exercises:['סקוואט עם ליבה מתוחה 3×6','דד ליפט 3×5','turkish get up 3×3','farmers carry 3×40מ׳','אנטי-רוט עם משקל 3×10'] },
+      { week:1, focus:'הפעלה',                            exercises:['Diaphragmatic Breathing 3×10','dead bug 3×8','bird dog 3×10','ISO plank 3×20ש׳','Glute Bridge 3×12'] },
+      { week:2, focus:'תוספת עומס',                       exercises:['plank 3×30ש׳','side plank 3×20ש׳','Loaded Dead Bug 3×8','pallof press 3×10','Technical Deadlift 3×5'] },
+      { week:3, focus:'anti-rotation',                    exercises:['pallof press 3×12','farmers carry 3×30מ׳','plank pull-through 3×8','Cable Dead Bug 3×10','Side Plank with Leg Raise 3×8'] },
+      { week:4, focus:'שילוב אימון',                      exercises:['Braced Squat 3×6','Deadlift 3×5','turkish get up 3×3','farmers carry 3×40מ׳','Weighted Anti-Rotation 3×10'] },
     ],
   },
   glutes: {
@@ -127,10 +127,10 @@ export const protocols = {
     duration: 4,
     principles:['ישבן חלש = כאבי גב/ברך','להתחיל עם isolation לפני compound','לחוש את השריר עובד'],
     weeks:[
-      { week:1, focus:'התעוררות',                         exercises:['גשר ישבן 3×15','clamshell 3×15','fire hydrant 3×12','monster walk 3×15צעדים','side lying leg raise 3×12'] },
-      { week:2, focus:'עומס בינוני',                      exercises:['גשר על רגל אחת 3×10','hip thrust משקל גוף 3×15','ROMANIAN DL 3×10','לאנג׳ הליכה 3×10','גומייה סקוואט 3×12'] },
-      { week:3, focus:'עומס גבוה',                        exercises:['hip thrust עם מוט 3×10','דדליפט רומני 3×8','לאנג׳ אחורי 3×10','גשר עם עומס 3×12','pallof press 3×10'] },
-      { week:4, focus:'compound מלא',                     exercises:['דדליפט 3×5','סקוואט 3×6','hip thrust כבד 3×8','לאנג׳ קפיצה 3×5','abduction בכבל 3×15'] },
+      { week:1, focus:'התעוררות',                         exercises:['Glute Bridge 3×15','clamshell 3×15','fire hydrant 3×12','monster walk 3×15צעדים','side lying leg raise 3×12'] },
+      { week:2, focus:'עומס בינוני',                      exercises:['Single-Leg Glute Bridge 3×10','Bodyweight Hip Thrust 3×15','ROMANIAN DL 3×10','Walking Lunge 3×10','Banded Squat 3×12'] },
+      { week:3, focus:'עומס גבוה',                        exercises:['Barbell Hip Thrust 3×10','Romanian Deadlift 3×8','Reverse Lunge 3×10','Loaded Glute Bridge 3×12','pallof press 3×10'] },
+      { week:4, focus:'compound מלא',                     exercises:['Deadlift 3×5','Squat 3×6','Heavy Hip Thrust 3×8','Jumping Lunge 3×5','Cable Abduction 3×15'] },
     ],
   },
   upper_back: {
@@ -138,10 +138,10 @@ export const protocols = {
     duration: 4,
     principles:['face pull הוא כוכב','להתרחק מכפיפת חזה','tempo חשוב'],
     weeks:[
-      { week:1, focus:'שחרור וטווח',                      exercises:['שחרור T-spine עם כדור','חתול-פרה 3×10','שחרור חזה בפינה 3×30ש׳','Y-T-W שכיבה 2×10','שכמות אקטיביות 3×15'] },
-      { week:2, focus:'חיזוק לב',                          exercises:['face pull 3×15','חתירה עם גומייה 3×15','Y-T-W עם משקל קל 2×10','שכמות במכונה 3×15','דד האנג 3×15ש׳'] },
-      { week:3, focus:'הכנסה לאימון',                     exercises:['חתירה במוט 3×10','face pull 4×15','ROW T-BAR 3×10','שכמות עם גומייה 3×15','שכמות דחיסות 3×15'] },
-      { week:4, focus:'מלא',                              exercises:['מתח 3×אמת','חתירה במוט 4×8','face pull 3×15','pull over 3×12','ISO shrug 3×20ש׳'] },
+      { week:1, focus:'שחרור וטווח',                      exercises:['T-Spine Ball Release','Cat-Cow 3×10','Corner Chest Release 3×30ש׳','Prone Y-T-W 2×10','Scapular Retraction 3×15'] },
+      { week:2, focus:'חיזוק לב',                          exercises:['face pull 3×15','Band Row 3×15','Light Y-T-W 2×10','Machine Scapular Retraction 3×15','Dead Hang 3×15ש׳'] },
+      { week:3, focus:'הכנסה לאימון',                     exercises:['Barbell Row 3×10','face pull 4×15','ROW T-BAR 3×10','Band Scapular Retraction 3×15','Scapular Squeeze 3×15'] },
+      { week:4, focus:'מלא',                              exercises:['Pull-up 3×אמת','Barbell Row 4×8','face pull 3×15','pull over 3×12','ISO shrug 3×20ש׳'] },
     ],
   },
 }

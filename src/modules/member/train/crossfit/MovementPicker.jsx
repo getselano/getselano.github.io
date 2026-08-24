@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { t } from '../../../../theme/tokens'
 import { Modal, Button, Input, Badge } from '../../../../components/ui/UI'
 import { MOVEMENTS, CATEGORIES, filterByInjuries } from '../../../../data/crossfit/movements'
+import { movementName } from '../../../../data/movementName'
 
 // Movement picker modal — modeled on wod-gpt's picker.
 // Grouped by category, searchable, multi-select, with "select all"per category.
@@ -112,7 +113,7 @@ export function MovementPicker({ open, onClose, selected = [], onChange, injurie
  cursor:'pointer', transition: t.transition, textAlign:'center',
  }}
  >
- {m.he}
+ {movementName(m)}
  </button>
  )
  })}
