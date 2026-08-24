@@ -11,7 +11,7 @@
 // !!! IMPORTANT !!!
 // Bump CACHE_NAME on every deploy that could break older cached assets.
 // The activate handler wipes every cache whose name != current one.
-const CACHE_NAME = 'selano-v6-2026-08-24'
+const CACHE_NAME = 'selano-v7-2026-08-24'
 
 const BASE = new URL(self.registration?.scope || './', self.location.href).pathname
 const OFFLINE_FALLBACK = BASE
@@ -79,7 +79,10 @@ self.addEventListener('fetch', (event) => {
       caches.match(request).then((cached) => {
         if (cached) return cached
         return fetch(request).then((res) => {
-          if (res && res.ok) {
+          // Only a complete 200 may be cached. A 206 partial is also `ok`, and
+          // caching one here would serve a truncated model to every later
+          // request — permanently, since this branch never revalidates.
+          if (res && res.status === 200) {
             const clone = res.clone()
             caches.open(CACHE_NAME).then(c => c.put(request, clone)).catch(() => {})
           }

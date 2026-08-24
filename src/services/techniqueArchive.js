@@ -24,6 +24,15 @@ export const MAX_CLIPS = 20
 
 let dbPromise = null
 
+// Set by the most recent failed save so the UI can explain a missing clip
+// rather than leaving the user to notice it never appeared.
+let lastSaveError = null
+export function takeSaveError() {
+  const e = lastSaveError
+  lastSaveError = null
+  return e
+}
+
 function openDb() {
   if (dbPromise) return dbPromise
   dbPromise = new Promise((resolve, reject) => {
@@ -105,6 +114,13 @@ export async function saveClip({
     return record.id
   } catch (err) {
     console.warn('[techniqueArchive] save failed:', err?.message || err)
+    // A full device is the common cause and it is fixable by the user, so the
+    // caller gets something worth showing rather than a bare null.
+    const quota = err?.name === 'QuotaExceededError'
+      || /quota/i.test(err?.message || '')
+    lastSaveError = quota
+      ? 'אין מספיק מקום פנוי במכשיר לשמור את הסרטון. מחק סרטונים ישנים ונסה שוב.'
+      : 'לא הצלחנו לשמור את הסרטון על המכשיר. הדוח עצמו תקין.'
     return null
   }
 }

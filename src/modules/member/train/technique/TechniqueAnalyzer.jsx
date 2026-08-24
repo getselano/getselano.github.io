@@ -4,19 +4,20 @@ import { useApp } from '../../../../store/AppStore'
 import { Card, Button, Badge, SectionHeader } from '../../../../components/ui/UI'
 import { DisclaimerNote } from '../../../../components/legal/DisclaimerNote'
 import { groupedMovements, searchMovements } from '../../../../data/liftCriteria'
-import { analyzeVideo, POSE_LIMITS } from '../../../../services/poseAnalysis'
+import { analyzeVideo, POSE_LIMITS, runDiagnostics } from '../../../../services/poseAnalysis'
 import { coachTechnique, aiEnabled } from '../../../../services/aiCoach'
 import {
   saveClip, attachCoaching, listClips, getClip, deleteClip, deleteAllClips,
-  purgeExpired, archiveStats, formatBytes, daysLeft, RETENTION_DAYS,
+  purgeExpired, archiveStats, formatBytes, daysLeft, takeSaveError, RETENTION_DAYS,
 } from '../../../../services/techniqueArchive'
 
 // Technique review. Three taps to the analysis: pick the movement, hand over
 // a clip, read the report.
 //
-// The video is processed entirely on-device and is never uploaded — only a
-// few stills and the measured angles reach Gemini for the coaching wording,
-// and nothing about the clip is persisted.
+// The video is processed entirely on-device — it is never uploaded. Only a
+// few stills and the measured angles reach Gemini for the coaching wording.
+// The clip is kept in IndexedDB on this device so the report survives a
+// refresh; see techniqueArchive for the retention policy.
 
 const MAX_FILE_MB = 120
 
@@ -37,6 +38,8 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
   const [stats, setStats] = useState({ count: 0, bytes: 0 })
   const [purged, setPurged] = useState(0)
   const [openClip, setOpenClip] = useState(null)
+  const [saveWarning, setSaveWarning] = useState('')
+  const [diag, setDiag] = useState(null)      // null | 'running' | {steps, ok}
   const savedIdRef = useRef(null)
   // Two separate inputs: `capture` forces the camera on mobile and skips the
   // gallery entirely, so picking an existing clip needs its own input without it.
@@ -113,6 +116,9 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
         coverage: analysis.coverage,
         confidence: analysis.confidence,
       })
+      // A clip that silently failed to save would just never show up in the
+      // archive, which reads as the feature being broken.
+      setSaveWarning(savedIdRef.current ? '' : (takeSaveError() || ''))
       refreshArchive()
 
       // Coaching text is a bonus layer — the measured report already stands
@@ -186,6 +192,12 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
             </div>
           </Card>
         )}
+
+        <DiagnosticsPanel
+          diag={diag}
+          onRun={async () => { setDiag('running'); setDiag(await runDiagnostics()) }}
+          onDismiss={() => setDiag(null)}
+        />
 
         {clips.length > 0 && (
           <button onClick={() => setView('archive')} style={{
@@ -287,7 +299,8 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
           </div>
 
           <div style={{ fontSize: 11, color: t.color.textMuted, marginTop: 10, lineHeight: 1.6, textAlign:'center' }}>
-            הסרטון מנותח על המכשיר שלך ולא נשמר בשום מקום.
+            הסרטון מנותח ונשמר על המכשיר שלך בלבד — הוא לא מועלה לשום שרת,
+            ונמחק אוטומטית אחרי {RETENTION_DAYS} ימים.
             {aiEnabled ? ' רק תמונות בודדות והזוויות שנמדדו נשלחות לניסוח ההמלצות.' : ''}
           </div>
         </>
@@ -304,7 +317,17 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
       )}
 
       {phase === 'done' && result && (
-        <Report result={result} movement={movement} coaching={coaching} stage={stage} onRetry={reset} />
+        <>
+          {saveWarning && (
+            <Card style={{ marginBottom: 14, borderColor: t.color.warning, background: `${t.color.warning}10` }}>
+              <div style={{ fontWeight: 700, color: t.color.warning, marginBottom: 4, fontSize: 13 }}>
+                הסרטון לא נשמר
+              </div>
+              <div style={{ fontSize: 12, color: t.color.textDim, lineHeight: 1.7 }}>{saveWarning}</div>
+            </Card>
+          )}
+          <Report result={result} movement={movement} coaching={coaching} stage={stage} onRetry={reset} />
+        </>
       )}
     </div>
   )
@@ -313,6 +336,74 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
 // Typing beats scrolling once the list passes ~20 entries. Matches Hebrew and
 // English names plus the internal id, so "power clean", "פאוור" and
 // "power_clean" all land on the same movement.
+// A four-way check of the things that can independently break this feature.
+// Without it a failure is just "it doesn't work", which is not something
+// either the user or we can act on.
+function DiagnosticsPanel({ diag, onRun, onDismiss }) {
+  if (!diag) {
+    return (
+      <button onClick={onRun} style={{
+        background:'transparent', border:`1px solid ${t.color.border}`,
+        color: t.color.textDim, padding:'7px 12px', borderRadius: t.radius.sm,
+        cursor:'pointer', fontFamily:'inherit', fontSize: 12, marginBottom: 14,
+      }}>הבדיקה לא עובדת? הרץ בדיקת תקינות</button>
+    )
+  }
+
+  if (diag === 'running') {
+    return (
+      <Card style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: t.color.textDim }}>בודק…</div>
+      </Card>
+    )
+  }
+
+  const failed = diag.steps.filter(s => !s.ok)
+  return (
+    <Card style={{
+      marginBottom: 14,
+      borderColor: diag.ok ? t.color.success : t.color.danger,
+      background: diag.ok ? `${t.color.success}0d` : `${t.color.danger}0d`,
+    }}>
+      <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 10, color: diag.ok ? t.color.success : t.color.danger }}>
+        {diag.ok ? 'הכל תקין' : `נמצאה תקלה ב-${failed.length} שלבים`}
+      </div>
+
+      <div style={{ display:'grid', gap: 8 }}>
+        {diag.steps.map(s => (
+          <div key={s.label} style={{
+            display:'flex', gap: 10, alignItems:'flex-start',
+            padding: 8, background: t.color.bgSoft, borderRadius: t.radius.sm,
+            borderInlineStart: `3px solid ${s.ok ? t.color.success : t.color.danger}`,
+          }}>
+            <span style={{
+              color: s.ok ? t.color.success : t.color.danger,
+              fontWeight: 900, fontSize: 13, flexShrink: 0, lineHeight: 1.5,
+            }}>{s.ok ? '✓' : '✕'}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{s.label}</div>
+              <div style={{ fontSize: 12, color: t.color.textDim, marginTop: 2, lineHeight: 1.6 }}>
+                {s.detail}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {!diag.ok && (
+        <div style={{ fontSize: 11, color: t.color.textMuted, marginTop: 10, lineHeight: 1.7 }}>
+          צלם מסך של הרשימה הזו ושלח אותה — היא מראה בדיוק איזה שלב נכשל.
+        </div>
+      )}
+
+      <div style={{ display:'flex', gap: 8, marginTop: 12 }}>
+        <Button variant="ghost" size="sm" onClick={onRun}>בדוק שוב</Button>
+        <Button variant="ghost" size="sm" onClick={onDismiss}>סגור</Button>
+      </div>
+    </Card>
+  )
+}
+
 // ─── Archive ──────────────────────────────────────────────────────
 
 function ArchiveView({ clips, stats, onBack, onOpen, onDelete, onClearAll }) {

@@ -36,6 +36,26 @@ export const LM = {
   leftFootIndex: 31, rightFootIndex: 32,
 }
 
+// The runtime is ~12MB and the model ~5.8MB. On a weak mobile connection that
+// is minutes, and an unbounded wait is indistinguishable from a broken app.
+const WASM_TIMEOUT_MS = 60000
+
+// Rejects with `reason` if `promise` hasn't settled in time. The flag lets the
+// caller tell a timeout apart from a genuine load error and keep the specific
+// message instead of replacing it with a generic one.
+function withTimeout(promise, ms, reason) {
+  let timer
+  return Promise.race([
+    promise.finally(() => clearTimeout(timer)),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reason.isTimeout = true
+        reject(reason)
+      }, ms)
+    }),
+  ])
+}
+
 let landmarkerPromise = null
 
 // Load once per page. The model is ~5.8 MB, so the first analysis pays a
@@ -50,8 +70,16 @@ async function getLandmarker(onProgress) {
     // advice, so they're loaded in separate steps with distinct messages.
     let fileset
     try {
-      fileset = await FilesetResolver.forVisionTasks(WASM_BASE)
-    } catch {
+      fileset = await withTimeout(
+        FilesetResolver.forVisionTasks(WASM_BASE),
+        WASM_TIMEOUT_MS,
+        new Error(
+          'טעינת מנוע הזיהוי נתקעה. הוא נטען מ-cdn.jsdelivr.net (כ-12MB בפעם הראשונה) — ' +
+          'ייתכן שהרשת שלך איטית או חוסמת אותו. נסה Wi-Fi, או כבה חוסם פרסומות ו-VPN.'
+        )
+      )
+    } catch (err) {
+      if (err?.isTimeout) throw err
       throw new Error(
         'לא הצלחנו לטעון את מנוע הזיהוי. ייתכן שהרשת שלך חוסמת את cdn.jsdelivr.net — ' +
         'נסה רשת אחרת או כבה חוסם פרסומות.'
@@ -82,7 +110,13 @@ async function getLandmarker(onProgress) {
           outputSegmentationMasks: false,
         })
       } catch {
-        throw new Error('לא הצלחנו לטעון את מודל זיהוי התנועה. בדוק את חיבור האינטרנט ונסה שוב.')
+        // A corrupt cached copy fails exactly like a network error, and the
+        // service worker serves the model cache-first, so it would never heal
+        // on its own. Say so, since clearing it is the actual fix.
+        throw new Error(
+          'לא הצלחנו לטעון את מודל זיהוי התנועה. בדוק את חיבור האינטרנט ונסה שוב. ' +
+          'אם זה חוזר, הרץ "בדיקת תקינות" במסך בדיקת הטכניקה.'
+        )
       }
     }
   })().catch(err => {
@@ -336,12 +370,24 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
 
     const step = 1 / SAMPLE_FPS
     const frames = []
+    let blankFrames = 0
     onProgress?.('analyzing')
 
     for (let tSec = 0; tSec < duration; tSec += step) {
       if (signal?.aborted) throw new Error('aborted')
       await seek(video, tSec)
       ctx.drawImage(video, 0, 0, w, h)
+
+      // A browser that reports a seek but paints nothing produces zero
+      // landmarks, which would otherwise be blamed on the user's framing.
+      // Checking the first few frames catches it while it is still cheap.
+      if (frames.length < 3 && isBlankFrame(ctx, w, h)) blankFrames++
+      if (blankFrames >= 3) {
+        throw new Error(
+          'הדפדפן פתח את הסרטון אבל לא הצליח לפענח את התמונה — כנראה פורמט לא נתמך ' +
+          '(HEVC/H.265 מאייפון). באייפון: הגדרות ← מצלמה ← פורמטים ← "הכי תואם", וצלם מחדש.'
+        )
+      }
       // Timestamps must increase monotonically in VIDEO mode.
       const result = landmarker.detectForVideo(canvas, Math.round(tSec * 1000))
       const lm = result?.landmarks?.[0]
@@ -487,11 +533,40 @@ function summarize(detected) {
 }
 
 // ─── DOM helpers ──────────────────────────────────────────────────
-function once(el, event) {
+//
+// Every wait below is bounded. A media element that never fires the event it
+// promised is the normal failure mode for an unsupported codec, and an
+// unbounded wait turns that into a progress bar that sits at 0% forever with
+// nothing to click. A timeout at least produces a sentence the user can act on.
+
+const META_TIMEOUT_MS = 15000
+const SEEK_TIMEOUT_MS = 8000
+
+// Translates the media element's own error code into advice, since "it didn't
+// work" is useless and the codec case is by far the most common.
+function mediaErrorMessage(el) {
+  const code = el?.error?.code
+  if (code === 4 || code === 3) {
+    return 'הדפדפן לא מצליח לפענח את הסרטון הזה. אם צילמת באייפון, פתח הגדרות ← מצלמה ← פורמטים ← "הכי תואם", או שלח את הקליפ לעצמך בוואטסאפ והעלה את הגרסה הזו.'
+  }
+  if (code === 2) return 'קריאת הסרטון נקטעה. נסה שוב.'
+  if (code === 1) return 'קריאת הסרטון בוטלה.'
+  return 'לא ניתן לקרוא את הסרטון.'
+}
+
+function once(el, event, timeoutMs = META_TIMEOUT_MS, label = event) {
   return new Promise((resolve, reject) => {
     const ok = () => { cleanup(); resolve() }
-    const fail = () => { cleanup(); reject(new Error('לא ניתן לקרוא את הסרטון')) }
+    const fail = () => { cleanup(); reject(new Error(mediaErrorMessage(el))) }
+    const timer = setTimeout(() => {
+      cleanup()
+      reject(new Error(
+        `הדפדפן לא הצליח לפתוח את הסרטון (${label}). ` +
+        'ייתכן שהפורמט לא נתמך — נסה קליפ קצר יותר או צלם מחדש מתוך האפליקציה.'
+      ))
+    }, timeoutMs)
     const cleanup = () => {
+      clearTimeout(timer)
       el.removeEventListener(event, ok)
       el.removeEventListener('error', fail)
     }
@@ -500,18 +575,156 @@ function once(el, event) {
   })
 }
 
+// Seeking has two traps. Assigning currentTime a value it already holds is a
+// no-op in some browsers, so no `seeked` ever arrives and the loop stalls —
+// hence the already-there short-circuit. And `seeked` can fire before the
+// frame is actually decodable, which yields a black canvas and therefore no
+// landmarks, so we additionally wait for readyState to say a frame is ready.
 function seek(video, tSec) {
+  const target = Math.min(tSec, Math.max(0, (video.duration || 0) - 0.05))
+
   return new Promise((resolve, reject) => {
+    if (Math.abs(video.currentTime - target) < 0.001 && video.readyState >= 2) {
+      resolve()
+      return
+    }
     const ok = () => { cleanup(); resolve() }
-    const fail = () => { cleanup(); reject(new Error('שגיאה בקריאת פריים')) }
+    const fail = () => { cleanup(); reject(new Error(mediaErrorMessage(video))) }
+    const timer = setTimeout(() => {
+      cleanup()
+      reject(new Error(
+        'הדפדפן נתקע בקריאת הסרטון. נסה קליפ קצר יותר, או צלם מחדש ישירות מהאפליקציה.'
+      ))
+    }, SEEK_TIMEOUT_MS)
     const cleanup = () => {
+      clearTimeout(timer)
       video.removeEventListener('seeked', ok)
       video.removeEventListener('error', fail)
     }
     video.addEventListener('seeked', ok, { once: true })
     video.addEventListener('error', fail, { once: true })
-    video.currentTime = Math.min(tSec, Math.max(0, (video.duration || 0) - 0.01))
+    video.currentTime = target
+  }).then(() => waitForFrame(video))
+}
+
+// `seeked` means the position moved, not that a frame is painted. Drawing too
+// early gives a blank canvas, which reads downstream as "no person detected".
+function waitForFrame(video, timeoutMs = 3000) {
+  if (video.readyState >= 2) return Promise.resolve()
+  return new Promise((resolve) => {
+    const done = () => { cleanup(); resolve() }
+    const timer = setTimeout(done, timeoutMs)   // draw anyway rather than stall
+    const cleanup = () => {
+      clearTimeout(timer)
+      video.removeEventListener('loadeddata', done)
+      video.removeEventListener('canplay', done)
+    }
+    video.addEventListener('loadeddata', done, { once: true })
+    video.addEventListener('canplay', done, { once: true })
   })
 }
 
+// True when the canvas came back essentially black — the signature of a frame
+// that was never decoded, which is worth reporting as a decode problem rather
+// than as "we couldn't see you in the video".
+function isBlankFrame(ctx, w, h) {
+  try {
+    const { data } = ctx.getImageData(0, 0, Math.min(w, 64), Math.min(h, 64))
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] > 12 || data[i + 1] > 12 || data[i + 2] > 12) return false
+    }
+    return true
+  } catch {
+    return false   // tainted canvas or similar — don't claim it was blank
+  }
+}
+
 export const POSE_LIMITS = { SAMPLE_FPS, MAX_DURATION_SEC }
+
+// ─── Diagnostics ──────────────────────────────────────────────────
+//
+// "It doesn't work" is not something we can act on from here, and the failure
+// can sit in any of four independent places: the WASM runtime on a CDN, the
+// model on our own origin, the browser's video decoder, or IndexedDB. Each is
+// checked on its own so the answer names the actual broken step instead of
+// asking the user to guess.
+
+async function checkStep(label, fn) {
+  const started = Date.now()
+  try {
+    const detail = await fn()
+    return { label, ok: true, detail, ms: Date.now() - started }
+  } catch (err) {
+    return { label, ok: false, detail: err?.message || String(err), ms: Date.now() - started }
+  }
+}
+
+export async function runDiagnostics() {
+  const steps = []
+
+  steps.push(await checkStep('חיבור לרשת', async () => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      throw new Error('המכשיר במצב לא מקוון')
+    }
+    return 'מחובר'
+  }))
+
+  // Range-free HEAD-style probe: we only need to know it is reachable and the
+  // right size, not to pull 12MB again.
+  steps.push(await checkStep('מנוע הזיהוי (cdn.jsdelivr.net)', async () => {
+    const res = await fetch(`${WASM_BASE}/vision_wasm_internal.js`, { method: 'GET' })
+    if (!res.ok) throw new Error(`השרת החזיר ${res.status}`)
+    const text = await res.text()
+    if (text.length < 1000) throw new Error('הקובץ שהתקבל קטן מדי — כנראה חסום או משובש')
+    return `זמין (${Math.round(text.length / 1024)}KB)`
+  }))
+
+  steps.push(await checkStep('מודל התנועה (מהשרת שלנו)', async () => {
+    const res = await fetch(MODEL_URL)
+    if (!res.ok) throw new Error(`השרת החזיר ${res.status} — הקובץ לא נמצא`)
+    // A 206 cached by the service worker and replayed as a full response is a
+    // real way for this to be permanently broken, so the size is checked.
+    const buf = await res.arrayBuffer()
+    const mb = buf.byteLength / (1024 * 1024)
+    if (buf.byteLength < 4 * 1024 * 1024) {
+      throw new Error(
+        `הקובץ הגיע חלקי (${mb.toFixed(1)}MB במקום ~5.5MB). ` +
+        'נקה את אחסון האתר בדפדפן וטען מחדש.'
+      )
+    }
+    return `תקין (${mb.toFixed(1)}MB)`
+  }))
+
+  steps.push(await checkStep('פענוח וידאו בדפדפן', async () => {
+    const support = []
+    if (typeof document !== 'undefined') {
+      const probe = document.createElement('video')
+      for (const [name, type] of [
+        ['MP4/H.264', 'video/mp4; codecs="avc1.42E01E"'],
+        ['HEVC/H.265', 'video/mp4; codecs="hvc1"'],
+        ['WebM/VP9', 'video/webm; codecs="vp9"'],
+        ['QuickTime', 'video/quicktime'],
+      ]) {
+        const can = probe.canPlayType(type)
+        if (can) support.push(name)
+      }
+    }
+    if (!support.length) throw new Error('הדפדפן לא מדווח על תמיכה באף פורמט וידאו')
+    return support.join(' · ')
+  }))
+
+  steps.push(await checkStep('שמירה על המכשיר', async () => {
+    if (typeof indexedDB === 'undefined') throw new Error('IndexedDB לא זמין (גלישה פרטית?)')
+    if (navigator?.storage?.estimate) {
+      const { quota = 0, usage = 0 } = await navigator.storage.estimate()
+      const freeMb = (quota - usage) / (1024 * 1024)
+      if (quota && freeMb < 60) {
+        throw new Error(`נשארו רק ${Math.round(freeMb)}MB פנויים — מחק סרטונים ישנים`)
+      }
+      return `${Math.round(freeMb)}MB פנויים`
+    }
+    return 'זמין'
+  }))
+
+  return { steps, ok: steps.every(s => s.ok) }
+}
