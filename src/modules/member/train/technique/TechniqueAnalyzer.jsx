@@ -3,7 +3,7 @@ import { t } from '../../../../theme/tokens'
 import { useApp } from '../../../../store/AppStore'
 import { Card, Button, Badge, SectionHeader } from '../../../../components/ui/UI'
 import { DisclaimerNote } from '../../../../components/legal/DisclaimerNote'
-import { MOVEMENTS_BY_DISCIPLINE, evaluateMovement } from '../../../../data/liftCriteria'
+import { groupedMovements, evaluateMovement } from '../../../../data/liftCriteria'
 import { analyzeVideo, POSE_LIMITS } from '../../../../services/poseAnalysis'
 import { coachTechnique, aiEnabled } from '../../../../services/aiCoach'
 
@@ -18,7 +18,7 @@ const MAX_FILE_MB = 120
 
 export function TechniqueAnalyzer({ discipline, onClose }) {
   const { state } = useApp()
-  const movements = MOVEMENTS_BY_DISCIPLINE(discipline)
+  const groups = groupedMovements(discipline)
 
   const [movement, setMovement] = useState(null)
   const [phase, setPhase] = useState('idle')   // idle | working | done | error
@@ -27,14 +27,19 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
   const [result, setResult] = useState(null)
   const [coaching, setCoaching] = useState(null)
   const [error, setError] = useState('')
-  const fileRef = useRef(null)
+  // Two separate inputs: `capture` forces the camera on mobile and skips the
+  // gallery entirely, so picking an existing clip needs its own input without it.
+  const cameraRef = useRef(null)
+  const galleryRef = useRef(null)
   const abortRef = useRef(null)
 
   const reset = () => {
     abortRef.current?.abort()
     setPhase('idle'); setProgress(0); setStage(''); setResult(null)
     setCoaching(null); setError('')
-    if (fileRef.current) fileRef.current.value = ''
+    // Clearing the value lets the same file be re-picked and re-analyzed.
+    if (cameraRef.current) cameraRef.current.value = ''
+    if (galleryRef.current) galleryRef.current.value = ''
   }
 
   const handleFile = async (file) => {
@@ -94,23 +99,35 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
           title="בדיקת טכניקה"
           subtitle="בחר תרגיל, צלם או העלה קליפ, וקבל מדידת זוויות ותיקונים"
         />
-        <div style={{ display:'grid', gap: 10 }}>
-          {movements.map(m => (
-            <button key={m.id} onClick={() => setMovement(m)} style={{
-              width:'100%', textAlign:'start', fontFamily:'inherit', cursor:'pointer',
-              background: t.color.bgSoft, border: `1px solid ${t.color.border}`,
-              borderRadius: t.radius.md, padding:'16px 18px', color: t.color.text,
-              display:'flex', alignItems:'center', gap: 12, transition: t.transition,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = t.color.gold }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = t.color.border }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: t.color.gold }}>{m.he}</div>
-                <div style={{ fontSize: 12, color: t.color.textDim, marginTop: 2 }}>{m.en}</div>
+        {/* Grouped so a 15-movement discipline doesn't render as one long wall */}
+        <div style={{ display:'grid', gap: 20 }}>
+          {groups.map(g => (
+            <div key={g.key}>
+              <div style={{
+                fontFamily: t.font.family.mono, fontSize: 10, letterSpacing:'0.2em',
+                color: t.color.silver2, fontWeight: 700, textTransform:'uppercase',
+                marginBottom: 8,
+              }}>{g.he} · {g.movements.length}</div>
+              <div style={{ display:'grid', gap: 8 }}>
+                {g.movements.map(m => (
+                  <button key={m.id} onClick={() => setMovement(m)} style={{
+                    width:'100%', textAlign:'start', fontFamily:'inherit', cursor:'pointer',
+                    background: t.color.bgSoft, border: `1px solid ${t.color.border}`,
+                    borderRadius: t.radius.md, padding:'13px 16px', color: t.color.text,
+                    display:'flex', alignItems:'center', gap: 12, transition: t.transition,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = t.color.gold }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = t.color.border }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: t.color.gold }}>{m.he}</div>
+                      <div style={{ fontSize: 11, color: t.color.textDim, marginTop: 2 }}>{m.en}</div>
+                    </div>
+                    <span style={{ fontSize: 20, color: t.color.gold }}>›</span>
+                  </button>
+                ))}
               </div>
-              <span style={{ fontSize: 22, color: t.color.gold }}>›</span>
-            </button>
+            </div>
           ))}
         </div>
       </div>
@@ -138,18 +155,35 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
           </Card>
 
           <input
-            ref={fileRef}
-            type="file"
-            accept="video/*"
-            capture="environment"
+            ref={cameraRef} type="file" accept="video/*" capture="environment"
             style={{ display:'none' }}
             onChange={e => handleFile(e.target.files?.[0])}
           />
-          <Button
-            variant="primary" size="lg"
-            onClick={() => fileRef.current?.click()}
-            style={{ width:'100%', justifyContent:'center', padding: 16 }}
-          >צלם או בחר סרטון</Button>
+          <input
+            ref={galleryRef} type="file" accept="video/*"
+            style={{ display:'none' }}
+            onChange={e => handleFile(e.target.files?.[0])}
+          />
+
+          <div style={{ display:'grid', gap: 10 }}>
+            <Button
+              variant="primary" size="lg"
+              onClick={() => cameraRef.current?.click()}
+              style={{ width:'100%', justifyContent:'center', padding: 16 }}
+            >צלם עכשיו</Button>
+
+            <button
+              onClick={() => galleryRef.current?.click()}
+              style={{
+                width:'100%', padding: 16, cursor:'pointer', fontFamily:'inherit',
+                background: t.color.bgSoft, color: t.color.text,
+                border:`1px solid ${t.color.border}`, borderRadius: t.radius.md,
+                fontSize: 15, fontWeight: 700, transition: t.transition,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = t.color.gold }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = t.color.border }}
+            >בחר סרטון מהגלריה</button>
+          </div>
 
           <div style={{ fontSize: 11, color: t.color.textMuted, marginTop: 10, lineHeight: 1.6, textAlign:'center' }}>
             הסרטון מנותח על המכשיר שלך ולא נשמר בשום מקום.
