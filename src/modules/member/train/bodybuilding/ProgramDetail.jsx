@@ -6,6 +6,7 @@ import { LEVELS, GOALS, EQUIPMENT_TYPES } from '../../../../data/bodybuilding/pr
 import { ROUTINE_BY_ID, estimateDurationMin } from '../../../../data/bodybuilding/routines'
 import { EXERCISE_BY_ID } from '../../../../data/bodybuilding/exercises'
 import { Kicker, SectionHead, Label, Button as SButton } from '../../../../design/components/primitives'
+import { movementName } from '../../../../data/movementName'
 
 // Program detail modal — shown when user taps a program card in Explore.
 export function ProgramDetail({ program, open, onClose }) {
@@ -166,7 +167,7 @@ function RoutinePreview({ routine }) {
  <span style={{
  color: t.color.white,
  letterSpacing:'-0.005em',
- }}>{exercise.he}</span>
+ }}>{movementName(exercise)}</span>
  <span style={{
  fontFamily: t.font.family.mono, fontSize: 10,
  color: t.color.silver2, letterSpacing:'0.14em',

@@ -260,7 +260,7 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
       <BackRow onClose={() => (phase === 'idle' ? setMovement(null) : reset())}
         label={phase === 'idle' ? '← בחר תרגיל אחר' : '← התחל מחדש'} />
 
-      <SectionHeader title={movementName(movement)} subtitle={movement.he} />
+      <SectionHeader title={movementName(movement)} />
 
       {phase === 'idle' && (
         <>

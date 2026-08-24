@@ -4,6 +4,7 @@ import { Modal, Tabs, Badge, Card } from '../../../../components/ui/UI'
 import { useApp } from '../../../../store/AppStore'
 import { MUSCLE_GROUPS, EQUIPMENT } from '../../../../data/bodybuilding/exercises'
 import { strengthLevelFor } from '../../../../data/bodybuilding/strengthStandards'
+import { movementName } from '../../../../data/movementName'
 
 // Exercise detail modal — the reference's 4-tab structure: Summary / History / How to / Leaderboard.
 export function ExerciseDetail({ exercise, open, onClose }) {
@@ -13,7 +14,7 @@ export function ExerciseDetail({ exercise, open, onClose }) {
  const opt = state.workoutSettings?.leaderboardOptIn
 
  return (
- <Modal open={open} onClose={onClose} title={exercise.he} width={640}>
+ <Modal open={open} onClose={onClose} title={movementName(exercise)} width={640}>
  {/* Illustration placeholder + primary muscle */}
  <div style={{
  background: t.color.bgSoft, borderRadius: t.radius.md,
@@ -168,7 +169,7 @@ function HowToTab({ exercise }) {
  style={{ position:'absolute', top: 0, left: 0, width:'100%', height:'100%', border: 0 }}
  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
  allowFullScreen
- title={exercise.he}
+ title={movementName(exercise)}
  />
  </div>
  )}

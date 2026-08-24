@@ -3,6 +3,7 @@ import { t } from '../../../../theme/tokens'
 import { Card, Input, Badge, Modal, Button, Tabs } from '../../../../components/ui/UI'
 import { EXERCISES, MUSCLE_GROUPS, EQUIPMENT, POPULAR_EXERCISES } from '../../../../data/bodybuilding/exercises'
 import { ExerciseDetail } from './ExerciseDetail'
+import { movementName, matchesQuery } from '../../../../data/movementName'
 
 // Standard exercise library — A-Z alphabetical + muscle-group + equipment filters.
 export function ExerciseLibrary() {
@@ -20,7 +21,7 @@ export function ExerciseLibrary() {
  if (query.trim()) {
  const q = query.trim().toLowerCase()
  list = list.filter(e =>
- e.he.toLowerCase().includes(q) || e.en.toLowerCase().includes(q)
+ matchesQuery(e, q)
  )
  }
  // Sort A-Z by English name (like the reference)
@@ -155,7 +156,7 @@ function ExerciseRow({ exercise, onClick }) {
  }}>{EQUIPMENT[exercise.equipment]?.icon || ''}</div>
  <div style={{ flex: 1, minWidth: 0 }}>
  <div style={{ color: t.color.info, fontWeight: 700, fontSize: t.font.md, marginBottom: 2 }}>
- {exercise.he}
+ {movementName(exercise)}
  </div>
  <div style={{ color: t.color.textDim, fontSize: t.font.xs }}>
  {exercise.en} · {primary}

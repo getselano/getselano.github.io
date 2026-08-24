@@ -15,11 +15,27 @@ export const useAuth = () => useContext(AuthCtx)
 function readCoachList() { return storage.get(COACH_LIST_KEY, []) || [] }
 function writeCoachList(list) { storage.set(COACH_LIST_KEY, list) }
 
+// Survives a reload so an admin previewing the member app stays there.
+const VIEW_AS_KEY = 'selano_view_as'
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => supabaseEnabled ? null : storage.get('user'))
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(supabaseEnabled)
-  const [viewAs, setViewAsState] = useState(null)
+  // Which role the admin is currently looking at the app as.
+  //
+  // Persisted, because a refresh used to drop it: an admin browsing as a
+  // member reverted to admin, every member screen became invalid for the
+  // role, and they were bounced to the admin dashboard — losing the screen
+  // they were on for a reason that had nothing to do with the screen.
+  const [viewAs, setViewAsState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_AS_KEY)
+      return saved === 'member' || saved === 'coach' ? saved : null
+    } catch {
+      return null
+    }
+  })
   // When true, LoginScreen shows the "set new password" form instead of normal login.
   // Set by Supabase's PASSWORD_RECOVERY event when the user lands from a reset email.
   const [passwordRecovery, setPasswordRecovery] = useState(false)
@@ -297,11 +313,17 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     if (supabaseEnabled) await supabase.auth.signOut()
     setUser(null); setViewAsState(null); setPasswordRecovery(false)
+    try { localStorage.removeItem(VIEW_AS_KEY) } catch { /* nothing to clear */ }
   }
 
   const setViewAs = (role) => {
     if (user?.role !== 'admin') return
-    setViewAsState(role === 'admin' ? null : role)
+    const next = role === 'admin' ? null : role
+    setViewAsState(next)
+    try {
+      if (next) localStorage.setItem(VIEW_AS_KEY, next)
+      else localStorage.removeItem(VIEW_AS_KEY)
+    } catch { /* storage unavailable — the choice just won't survive a reload */ }
   }
 
   const effectiveRole = (user?.role === 'admin' && viewAs) ? viewAs : user?.role
