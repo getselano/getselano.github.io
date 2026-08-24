@@ -3,6 +3,7 @@ import { t } from '../../../../theme/tokens'
 import { useApp } from '../../../../store/AppStore'
 import { Card, Button, Badge, SectionHeader } from '../../../../components/ui/UI'
 import { DisclaimerNote } from '../../../../components/legal/DisclaimerNote'
+import { useLongPress, HoldIndicator, ConfirmDeleteSheet } from '../../../../components/ui/LongPressDelete'
 import { groupedMovements, searchMovements } from '../../../../data/liftCriteria'
 import { analyzeVideo, POSE_LIMITS, runDiagnostics } from '../../../../services/poseAnalysis'
 import { coachTechnique, aiEnabled } from '../../../../services/aiCoach'
@@ -412,6 +413,7 @@ function DiagnosticsPanel({ diag, onRun, onDismiss }) {
 // ─── Archive ──────────────────────────────────────────────────────
 
 function ArchiveView({ clips, stats, onBack, onOpen, onDelete, onClearAll }) {
+  const [clearing, setClearing] = useState(false)
   return (
     <div>
       <BackRow onClose={onBack} label="← חזרה לבדיקה חדשה" />
@@ -424,6 +426,8 @@ function ArchiveView({ clips, stats, onBack, onOpen, onDelete, onClearAll }) {
         <div style={{ fontSize: 12, color: t.color.textDim, lineHeight: 1.7 }}>
           הסרטונים נשמרים על המכשיר שלך בלבד — לא מועלים לשום שרת.
           כל סרטון נמחק אוטומטית אחרי {RETENTION_DAYS} ימים כדי לא לתפוס מקום.
+          <br />
+          <b style={{ color: t.color.text }}>לחיצה ארוכה על סרטון</b> פותחת מחיקה.
         </div>
       </Card>
 
@@ -439,10 +443,17 @@ function ArchiveView({ clips, stats, onBack, onOpen, onDelete, onClearAll }) {
             {clips.map(c => <ClipRow key={c.id} clip={c} onOpen={onOpen} onDelete={onDelete} />)}
           </div>
 
+          <ConfirmDeleteSheet
+            open={clearing}
+            title={`למחוק את כל ${clips.length} הסרטונים?`}
+            body="כל הסרטונים והדוחות יימחקו מהמכשיר. אי אפשר לשחזר."
+            confirmLabel="מחק הכל"
+            onCancel={() => setClearing(false)}
+            onConfirm={() => { setClearing(false); onClearAll() }}
+          />
+
           <button
-            onClick={() => {
-              if (confirm(`למחוק את כל ${clips.length} הסרטונים? הפעולה בלתי הפיכה.`)) onClearAll()
-            }}
+            onClick={() => setClearing(true)}
             style={{
               width:'100%', marginTop: 16, padding: 12, cursor:'pointer', fontFamily:'inherit',
               background:'transparent', border:`1px solid ${t.color.danger}`,
@@ -461,17 +472,39 @@ function ClipRow({ clip: c, onOpen, onDelete }) {
   const thumb = c.findings?.find(f => f.frame?.dataUrl)?.frame?.dataUrl
     || c.stills?.[0]?.dataUrl
 
+  const [confirming, setConfirming] = useState(false)
+  const hold = useLongPress({ onTrigger: () => setConfirming(true) })
+
   return (
-    <div style={{
-      display:'flex', gap: 12, alignItems:'center', padding: 10,
-      background: t.color.bgSoft, border:`1px solid ${t.color.border}`,
-      borderRadius: t.radius.md,
-    }}>
-      <button onClick={() => onOpen(c.id)} style={{
-        flex: 1, minWidth: 0, display:'flex', gap: 12, alignItems:'center',
-        background:'transparent', border:'none', color: t.color.text,
-        cursor:'pointer', fontFamily:'inherit', textAlign:'start', padding: 0,
-      }}>
+    <div
+      {...hold.handlers}
+      style={{
+        position:'relative',
+        display:'flex', gap: 12, alignItems:'center', padding: 10,
+        background: t.color.bgSoft, border:`1px solid ${t.color.border}`,
+        borderRadius: t.radius.md,
+        // Without this the browser claims the gesture for text selection or
+        // its own callout before the hold completes.
+        userSelect:'none', WebkitUserSelect:'none', WebkitTouchCallout:'none',
+      }}
+    >
+      <HoldIndicator progress={hold.progress} />
+
+      <ConfirmDeleteSheet
+        open={confirming}
+        title={`למחוק את ${c.movementHe}?`}
+        body={`הסרטון והדוח יימחקו מהמכשיר. אי אפשר לשחזר.`}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => { setConfirming(false); onDelete(c.id) }}
+      />
+
+      <button
+        onClick={() => { if (!hold.consumedClick()) onOpen(c.id) }}
+        style={{
+          flex: 1, minWidth: 0, display:'flex', gap: 12, alignItems:'center',
+          background:'transparent', border:'none', color: t.color.text,
+          cursor:'pointer', fontFamily:'inherit', textAlign:'start', padding: 0,
+        }}>
         {thumb && (
           <img src={thumb} alt="" style={{
             width: 64, height: 64, objectFit:'cover', borderRadius: t.radius.sm, flexShrink: 0,
@@ -495,16 +528,6 @@ function ClipRow({ clip: c, onOpen, onDelete }) {
         </div>
       </button>
 
-      <button
-        onClick={() => { if (confirm(`למחוק את הסרטון של ${c.movementHe}?`)) onDelete(c.id) }}
-        aria-label="מחק סרטון"
-        style={{
-          background:'transparent', border:`1px solid ${t.color.border}`,
-          color: t.color.danger, cursor:'pointer', padding:'8px 10px',
-          borderRadius: t.radius.sm, fontFamily:'inherit', fontSize: 12, fontWeight: 700,
-          flexShrink: 0,
-        }}
-      >מחק</button>
     </div>
   )
 }
@@ -513,6 +536,7 @@ function ClipRow({ clip: c, onOpen, onDelete }) {
 // from what was stored rather than by re-running pose detection.
 function SavedClipView({ clip: c, onBack, onDeleted }) {
   const [videoUrl, setVideoUrl] = useState(null)
+  const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
     if (!c.videoBlob) return
@@ -573,8 +597,16 @@ function SavedClipView({ clip: c, onBack, onDeleted }) {
           </Card>
         )}
 
+        <ConfirmDeleteSheet
+          open={confirming}
+          title={`למחוק את ${c.movementHe}?`}
+          body="הסרטון והדוח יימחקו מהמכשיר. אי אפשר לשחזר."
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => { setConfirming(false); onDeleted(c.id) }}
+        />
+
         <button
-          onClick={() => { if (confirm('למחוק את הסרטון הזה?')) onDeleted(c.id) }}
+          onClick={() => setConfirming(true)}
           style={{
             width:'100%', padding: 12, cursor:'pointer', fontFamily:'inherit',
             background:'transparent', border:`1px solid ${t.color.danger}`,

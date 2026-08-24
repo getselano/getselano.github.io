@@ -51,20 +51,79 @@ import { PersonalRequests } from './modules/admin/personal-requests/PersonalRequ
 import { MemberPhotos } from './modules/admin/member-photos/MemberPhotos'
 import { AdminFeedback } from './modules/admin/feedback/AdminFeedback'
 
+// The screens each role can open. Kept as plain id lists so the hash can be
+// validated before the page maps — which hold live elements — are built.
+const MEMBER_PAGE_IDS = [
+  'home', 'goals', 'progress', 'train', 'train-history', 'train-programs',
+  'train-import', 'rehab', 'nutrition', 'mind', 'calendar', 'store',
+  'personal', 'ondemand', 'community', 'reminders', 'talk', 'profile', 'control',
+]
+const ADMIN_PAGE_IDS = [
+  'overview', 'pilot', 'personal', 'photos', 'requests', 'members', 'team',
+  'billing', 'analytics', 'alerts', 'feedback', 'settings',
+]
+
+// Screen ids are a restricted alphabet, so anything else in the hash is
+// somebody else's — an anchor link, a stale bookmark — and is ignored rather
+// than routed to.
+function pageFromHash() {
+  try {
+    const raw = (window.location.hash || '').replace(/^#\/?/, '')
+    return /^[a-z-]{2,32}$/.test(raw) ? raw : null
+  } catch {
+    return null
+  }
+}
+
 function AppRouter() {
  const { user, effectiveRole, loading, passwordRecovery } = useAuth()
  const { state, setRole, completeOnboarding } = useApp()
  // Deep-link support: if the URL has ?workout=<id>, start on the community
  // tab so the Community screen can auto-scroll to that card. It clears the
  // param itself after consuming it.
+ // The current screen also lives in the URL hash, so a refresh — including the
+ // one the service worker triggers after a deploy — comes back to the screen
+ // the user was on instead of dumping them at home. The hash is used rather
+ // than a path because the app is served from a static host with no rewrite
+ // rules, and it gives the browser's back button something to move through.
  const initialPage = (() => {
    try {
      const url = new URL(window.location.href)
      if (url.searchParams.get('workout')) return 'community'
+     const fromHash = pageFromHash()
+     if (fromHash) return fromHash
    } catch {}
    return 'home'
  })()
  const [page, setPage] = useState(initialPage)
+
+ // Back and forward move between screens rather than leaving the app.
+ useEffect(() => {
+   const onHashChange = () => {
+     const next = pageFromHash()
+     if (next) setPage(next)
+   }
+   window.addEventListener('hashchange', onHashChange)
+   return () => window.removeEventListener('hashchange', onHashChange)
+ }, [])
+
+ // Mirror the current screen into the hash. This has to sit above the early
+ // returns below — a hook that only runs on some renders is not allowed, and
+ // the loading and login branches return before this point.
+ //
+ // replaceState rather than assigning location.hash, so moving between screens
+ // does not pile up history entries the back button has to step through, and
+ // a restored screen the current role cannot open is corrected in place.
+ useEffect(() => {
+   try {
+     const allowed = effectiveRole === 'admin' ? ADMIN_PAGE_IDS : MEMBER_PAGE_IDS
+     const target = allowed.includes(page)
+       ? page
+       : (effectiveRole === 'admin' ? 'overview' : 'home')
+     if (pageFromHash() === target) return
+     window.history.replaceState(null, '', `#/${target}`)
+   } catch { /* hash unavailable — routing still works in memory */ }
+ }, [page, effectiveRole])
 
  // If a member logs in and there's a pending ?workout= param, route to community.
  useEffect(() => {
