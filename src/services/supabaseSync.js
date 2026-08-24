@@ -216,6 +216,205 @@ export async function listProgressPhotos(userId = null) {
   return data || []
 }
 
+// ─── NUTRITION ──────────────────────────────────────────────────────
+// meal_logs / blood_tests / custom_foods. Until now these tables existed
+// with RLS but nothing wrote to them — all nutrition data lived only in
+// localStorage, so clearing the browser destroyed it and no second device
+// ever saw it.
+//
+// Every write is idempotent on (user_id, client_id): the id is minted on the
+// device when the entry is created, so replaying a push — offline retry,
+// double tap, a second device pushing the same row — updates instead of
+// duplicating. See supabase/migrations/001_nutrition_sync.sql.
+//
+// All of these degrade to a no-op when Supabase isn't configured, and they
+// never throw: nutrition must keep working from local state alone.
+
+// A missing column means the migration hasn't been applied to this project.
+// Say so once, clearly, instead of failing silently on every write.
+let migrationWarned = false
+function noteNutritionError(op, error) {
+  if (!error) return
+  const missingColumn = error.code === '42703' || /column .* does not exist/i.test(error.message || '')
+  if (missingColumn && !migrationWarned) {
+    migrationWarned = true
+    console.warn(
+      '[supabaseSync] nutrition sync is disabled: the meal_logs/custom_foods/blood_tests ' +
+      'tables are missing columns. Apply supabase/migrations/001_nutrition_sync.sql.'
+    )
+    return
+  }
+  if (!missingColumn) console.warn(`[supabaseSync] ${op} failed:`, error.message)
+}
+
+export function newClientId() {
+  try {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
+  } catch { /* fall through */ }
+  return `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+// ── meal logs ──
+function mealRowFrom(userId, date, item) {
+  return {
+    user_id: userId,
+    date,
+    client_id: item.clientId,
+    food_id: item.foodId ?? null,
+    name: item.name ?? null,
+    grams: item.grams ?? null,
+    servings: item.servings ?? null,
+    kcal: item.kcal ?? null,
+    protein: item.p ?? null,
+    carbs: item.c ?? null,
+    fat: item.f ?? null,
+    fiber: item.fiber ?? null,
+    sugar: item.sugar ?? null,
+    sat_fat: item.satFat ?? null,
+    sodium: item.sodium ?? null,
+    from_recipe: item.fromRecipe ?? null,
+  }
+}
+
+function mealItemFrom(row) {
+  const item = {
+    clientId: row.client_id,
+    foodId: row.food_id,
+    name: row.name,
+    grams: row.grams,
+    kcal: num(row.kcal),
+    p: num(row.protein),
+    c: num(row.carbs),
+    f: num(row.fat),
+  }
+  if (row.servings != null) item.servings = Number(row.servings)
+  if (row.fiber != null) item.fiber = Number(row.fiber)
+  if (row.sugar != null) item.sugar = Number(row.sugar)
+  if (row.sat_fat != null) item.satFat = Number(row.sat_fat)
+  if (row.sodium != null) item.sodium = Number(row.sodium)
+  if (row.from_recipe) item.fromRecipe = row.from_recipe
+  return item
+}
+
+export async function pushMealLog(userId, date, item) {
+  if (!supabaseEnabled || !userId || !item?.clientId) return { skipped: true }
+  const { error } = await supabase
+    .from('meal_logs')
+    .upsert(mealRowFrom(userId, date, item), { onConflict: 'user_id,client_id' })
+  noteNutritionError('meal upsert', error)
+  return { error }
+}
+
+export async function deleteMealLog(userId, clientId) {
+  if (!supabaseEnabled || !userId || !clientId) return { skipped: true }
+  const { error } = await supabase
+    .from('meal_logs').delete().eq('user_id', userId).eq('client_id', clientId)
+  noteNutritionError('meal delete', error)
+  return { error }
+}
+
+// Returns { 'YYYY-MM-DD': [item, ...] } shaped like state.mealLogs.
+export async function fetchMealLogs(userId, sinceDays = 120) {
+  if (!supabaseEnabled || !userId) return null
+  const since = new Date()
+  since.setDate(since.getDate() - sinceDays)
+  const { data, error } = await supabase
+    .from('meal_logs').select('*')
+    .eq('user_id', userId)
+    .gte('date', since.toISOString().slice(0, 10))
+    .order('created_at', { ascending: true })
+  if (error) { noteNutritionError('meal fetch', error); return null }
+  const byDate = {}
+  for (const row of data || []) {
+    const key = String(row.date).slice(0, 10)
+    ;(byDate[key] ||= []).push(mealItemFrom(row))
+  }
+  return byDate
+}
+
+// ── custom foods ──
+export async function pushCustomFood(userId, food) {
+  if (!supabaseEnabled || !userId || !food?.id) return { skipped: true }
+  const row = {
+    user_id: userId,
+    client_id: food.id,
+    name: food.name,
+    cat: food.cat ?? null,
+    kcal: food.kcal ?? null,
+    protein: food.p ?? null,
+    carbs: food.c ?? null,
+    fat: food.f ?? null,
+    barcode: food.barcode ?? null,
+    fiber: food.fiber ?? null,
+    sugar: food.sugar ?? null,
+    sat_fat: food.satFat ?? null,
+    sodium: food.sodium ?? null,
+  }
+  const { error } = await supabase
+    .from('custom_foods').upsert(row, { onConflict: 'user_id,client_id' })
+  noteNutritionError('custom food upsert', error)
+  return { error }
+}
+
+export async function deleteCustomFood(userId, foodId) {
+  if (!supabaseEnabled || !userId || !foodId) return { skipped: true }
+  const { error } = await supabase
+    .from('custom_foods').delete().eq('user_id', userId).eq('client_id', foodId)
+  noteNutritionError('custom food delete', error)
+  return { error }
+}
+
+export async function fetchCustomFoods(userId) {
+  if (!supabaseEnabled || !userId) return null
+  const { data, error } = await supabase.from('custom_foods').select('*').eq('user_id', userId)
+  if (error) { noteNutritionError('custom food fetch', error); return null }
+  return (data || []).map(r => {
+    const food = {
+      id: r.client_id || `remote_${r.id}`,
+      name: r.name, cat: r.cat,
+      kcal: num(r.kcal), p: num(r.protein), c: num(r.carbs), f: num(r.fat),
+    }
+    if (r.barcode) food.barcode = r.barcode
+    if (r.fiber != null) food.fiber = Number(r.fiber)
+    if (r.sugar != null) food.sugar = Number(r.sugar)
+    if (r.sat_fat != null) food.satFat = Number(r.sat_fat)
+    if (r.sodium != null) food.sodium = Number(r.sodium)
+    return food
+  })
+}
+
+// ── blood tests ──
+export async function pushBloodTest(userId, test) {
+  if (!supabaseEnabled || !userId || !test?.clientId) return { skipped: true }
+  const row = {
+    user_id: userId,
+    client_id: test.clientId,
+    date: String(test.date || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
+    values: test.values || {},
+  }
+  const { error } = await supabase
+    .from('blood_tests').upsert(row, { onConflict: 'user_id,client_id' })
+  noteNutritionError('blood test upsert', error)
+  return { error }
+}
+
+export async function fetchBloodTests(userId) {
+  if (!supabaseEnabled || !userId) return null
+  const { data, error } = await supabase
+    .from('blood_tests').select('*').eq('user_id', userId).order('date', { ascending: false })
+  if (error) { noteNutritionError('blood test fetch', error); return null }
+  return (data || []).map(r => ({
+    clientId: r.client_id,
+    date: r.date,
+    values: r.values || {},
+  }))
+}
+
+function num(v) {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
 // ─── ADMIN: MEMBERS LIST ────────────────────────────────────────────
 // Fetches all profiles. Tries to include email; if the `email` column is
 // missing (older schema), retries with just the core fields.

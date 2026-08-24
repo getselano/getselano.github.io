@@ -2,7 +2,12 @@ import React, { createContext, useContext, useEffect, useReducer } from 'react'
 import { dataService } from '../services/dataService'
 import { todayKey } from '../utils/date'
 import { supabase, supabaseEnabled } from '../lib/supabase'
-import { upsertProfile, markOnboarded } from '../services/supabaseSync'
+import {
+  upsertProfile, markOnboarded, newClientId,
+  pushMealLog, deleteMealLog, fetchMealLogs,
+  pushCustomFood, deleteCustomFood, fetchCustomFoods,
+  pushBloodTest, fetchBloodTests,
+} from '../services/supabaseSync'
 
 const AppCtx = createContext(null)
 export const useApp = () => useContext(AppCtx)
@@ -227,6 +232,33 @@ function reducer(state, action) {
       const now = new Date().toISOString()
       return { ...state, plan: { ...state.plan, startedAt: now, cycle: (state.plan.cycle || 1) + 1, difficultyByWeek: {} } }
     }
+    case 'MERGE_CLOUD_NUTRITION': {
+      // Union by clientId, local first. Never drops a local-only entry — the
+      // device may hold rows written while offline or before sync existed.
+      const mealLogs = { ...state.mealLogs }
+      for (const [date, cloudItems] of Object.entries(action.mealLogs || {})) {
+        const local = mealLogs[date] || []
+        const seen = new Set(local.map(m => m.clientId).filter(Boolean))
+        const additions = cloudItems.filter(m => m.clientId && !seen.has(m.clientId))
+        if (additions.length) mealLogs[date] = [...local, ...additions]
+        else if (!mealLogs[date]) mealLogs[date] = local
+      }
+
+      const foodIds = new Set(state.customFoods.map(f => f.id))
+      const customFoods = [
+        ...state.customFoods,
+        ...(action.customFoods || []).filter(f => !foodIds.has(f.id)),
+      ]
+
+      const bloodKey = (b) => b.clientId || `${b.date}`
+      const bloodSeen = new Set(state.bloodTests.map(bloodKey))
+      const bloodTests = [
+        ...state.bloodTests,
+        ...(action.bloodTests || []).filter(b => !bloodSeen.has(bloodKey(b))),
+      ].sort((a, b) => String(b.date).localeCompare(String(a.date)))
+
+      return { ...state, mealLogs, customFoods, bloodTests }
+    }
     case 'LOG_MEAL': {
       const key = action.date || todayKey()
       const cur = state.mealLogs[key] || []
@@ -342,6 +374,17 @@ function init() {
   return saved ? { ...initialState, ...saved } : initialState
 }
 
+// Resolve the signed-in user then run a sync call. Fire-and-forget by design:
+// nutrition writes must never block the UI or fail a local dispatch, and the
+// local state remains the source of truth when the backend is unreachable.
+async function withUser(fn) {
+  if (!supabaseEnabled) return
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.id) await fn(user.id)
+  } catch { /* offline / not signed in — local state already updated */ }
+}
+
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, undefined, init)
 
@@ -351,6 +394,68 @@ export function AppProvider({ children }) {
     if (firstRender.current) { firstRender.current = false; return }
     dataService.setState(state)
   }, [state])
+
+  // Latest state, read by the async backfill below — which must not re-run on
+  // every state change just to see the current rows.
+  const stateRef = React.useRef(state)
+  useEffect(() => { stateRef.current = state }, [state])
+
+  // Pull nutrition from the cloud once per session, then push anything local
+  // the cloud is missing. Runs after auth resolves; a device that logged meals
+  // offline (or before sync existed) uploads them on its next signed-in load.
+  const hydratedRef = React.useRef(false)
+  useEffect(() => {
+    if (!supabaseEnabled || hydratedRef.current) return
+    let cancelled = false
+
+    const run = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.id || cancelled) return
+      hydratedRef.current = true
+
+      const [mealLogs, customFoods, bloodTests] = await Promise.all([
+        fetchMealLogs(user.id),
+        fetchCustomFoods(user.id),
+        fetchBloodTests(user.id),
+      ])
+      if (cancelled) return
+      // A null result means the fetch failed (or the migration is missing) —
+      // merging it would look like "the cloud is empty" and change nothing,
+      // but skipping keeps the backfill below from running against bad data.
+      if (mealLogs == null && customFoods == null && bloodTests == null) return
+
+      dispatch({
+        type: 'MERGE_CLOUD_NUTRITION',
+        mealLogs: mealLogs || {},
+        customFoods: customFoods || [],
+        bloodTests: bloodTests || [],
+      })
+
+      // Backfill: push local rows the cloud doesn't have yet.
+      const cloudMealIds = new Set(
+        Object.values(mealLogs || {}).flat().map(m => m.clientId).filter(Boolean)
+      )
+      for (const [date, items] of Object.entries(stateRef.current.mealLogs || {})) {
+        for (const item of items) {
+          if (!item.clientId || cloudMealIds.has(item.clientId)) continue
+          pushMealLog(user.id, date, item).catch(() => {})
+        }
+      }
+      const cloudFoodIds = new Set((customFoods || []).map(f => f.id))
+      for (const food of stateRef.current.customFoods || []) {
+        if (!cloudFoodIds.has(food.id)) pushCustomFood(user.id, food).catch(() => {})
+      }
+      const cloudBloodIds = new Set((bloodTests || []).map(b => b.clientId).filter(Boolean))
+      for (const test of stateRef.current.bloodTests || []) {
+        if (test.clientId && !cloudBloodIds.has(test.clientId)) {
+          pushBloodTest(user.id, test).catch(() => {})
+        }
+      }
+    }
+
+    run().catch(() => { /* stay on local state */ })
+    return () => { cancelled = true }
+  }, [])
 
   const api = {
     state,
@@ -386,16 +491,37 @@ export function AppProvider({ children }) {
     purgeWorkoutTrash: () => dispatch({ type:'PURGE_TRASH' }),
     addWaterCup: (day, delta = 1) => dispatch({ type:'WATER_ADD', day, delta }),
     resetWaterDay: (day) => dispatch({ type:'WATER_RESET_DAY', day }),
-    logMeal: (item, date) => dispatch({ type:'LOG_MEAL', item, date }),
-    removeMeal: (index, date) => dispatch({ type:'REMOVE_MEAL', index, date }),
+    logMeal: (item, date) => {
+      // clientId is minted here so the local row and the cloud row share a key
+      const stamped = { ...item, clientId: item.clientId || newClientId() }
+      const day = date || todayKey()
+      dispatch({ type:'LOG_MEAL', item: stamped, date })
+      withUser(uid => pushMealLog(uid, day, stamped))
+    },
+    removeMeal: (index, date) => {
+      const day = date || todayKey()
+      const victim = (state.mealLogs[day] || [])[index]
+      dispatch({ type:'REMOVE_MEAL', index, date })
+      if (victim?.clientId) withUser(uid => deleteMealLog(uid, victim.clientId))
+    },
     addCheckin: (checkin) => dispatch({ type:'ADD_CHECKIN', checkin }),
     toggleHabit: (id) => dispatch({ type:'TOGGLE_HABIT', id }),
     addHabit: (habit) => dispatch({ type:'ADD_HABIT', habit }),
     removeHabit: (id) => dispatch({ type:'REMOVE_HABIT', id }),
-    addBlood: (test) => dispatch({ type:'ADD_BLOOD', test }),
+    addBlood: (test) => {
+      const stamped = { ...test, clientId: test.clientId || newClientId() }
+      dispatch({ type:'ADD_BLOOD', test: stamped })
+      withUser(uid => pushBloodTest(uid, stamped))
+    },
     setWearable: (data) => dispatch({ type:'SET_WEARABLE', data }),
-    addCustomFood: (food) => dispatch({ type:'ADD_CUSTOM_FOOD', food }),
-    removeCustomFood: (id) => dispatch({ type:'REMOVE_CUSTOM_FOOD', id }),
+    addCustomFood: (food) => {
+      dispatch({ type:'ADD_CUSTOM_FOOD', food })
+      withUser(uid => pushCustomFood(uid, food))
+    },
+    removeCustomFood: (id) => {
+      dispatch({ type:'REMOVE_CUSTOM_FOOD', id })
+      withUser(uid => deleteCustomFood(uid, id))
+    },
     startRehab: (program) => dispatch({ type:'START_REHAB', program }),
     logRehabPain: (programId, pain, note) => dispatch({ type:'LOG_REHAB_PAIN', programId, pain, note }),
     logRehabSession: (programId, week) => dispatch({ type:'LOG_REHAB_SESSION', programId, week }),
