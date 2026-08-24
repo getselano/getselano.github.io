@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { t } from '../../../theme/tokens'
 import { useApp } from '../../../store/AppStore'
 import { Card, Button, Input, Select, Badge, Modal, EmptyState } from '../../../components/ui/UI'
-import { foods, portionSizes, lookupBarcode } from '../../../data/foods'
+import { foods, portionSizes, lookupBarcode, searchFoodsOnline, scaleFood, MICRO_KEYS } from '../../../data/foods'
 import { useI18n } from '../../../i18n/i18n'
 
 // Enhanced picker with search, barcode, custom-food entry, and portion-size hints.
@@ -79,7 +79,9 @@ function RecentTab({ recent, onAdd }) {
  </div>
  <div style={{ maxHeight: 380, overflowY:'auto', display:'grid', gap: 6 }}>
  {recent.map((m, i) => (
- <div key={i} onClick={() => onAdd({ foodId: m.foodId, name: m.name, grams: m.grams, kcal: m.kcal, p: m.p, c: m.c, f: m.f })}
+ // Strip the aggregation-only fields and re-log everything else, so
+ // micronutrients captured on the original entry survive the quick-add.
+ <div key={i} onClick={() => { const { count, lastDate, ...entry } = m; onAdd(entry) }}
  style={{
  display:'flex', justifyContent:'space-between', alignItems:'center',
  padding: 12, background: t.color.bgSoft, borderRadius: t.radius.md,
@@ -112,8 +114,31 @@ function SearchTab({ foods: foodList, onAdd }) {
  const [selected, setSelected] = useState(null)
  const [grams, setGrams] = useState(100)
  const [portionKey, setPortionKey] = useState('')
+ const [online, setOnline] = useState([])
+ const [searching, setSearching] = useState(false)
+ const [searched, setSearched] = useState(false)
 
- const list = foodList.filter(f => !q || f.name.includes(q) || f.barcode?.includes(q))
+ const local = foodList.filter(f => !q || f.name.includes(q) || f.barcode?.includes(q))
+
+ // Debounced OpenFoodFacts lookup. The local library is 28 items — without
+ // this, anything the user actually eats is unreachable unless it happens to
+ // be a packaged good they can scan.
+ useEffect(() => {
+   const term = q.trim()
+   if (term.length < 2) { setOnline([]); setSearched(false); setSearching(false); return }
+   const ctrl = new AbortController()
+   setSearching(true)
+   const timer = setTimeout(async () => {
+     const results = await searchFoodsOnline(term, { signal: ctrl.signal })
+     if (ctrl.signal.aborted) return
+     // Don't re-offer something already in the local library
+     const known = new Set(foodList.map(f => f.barcode).filter(Boolean))
+     setOnline(results.filter(r => !known.has(r.barcode)))
+     setSearching(false)
+     setSearched(true)
+   }, 450)
+   return () => { clearTimeout(timer); ctrl.abort() }
+ }, [q, foodList])
 
  const applyPortion = (k) => {
  setPortionKey(k)
@@ -122,50 +147,118 @@ function SearchTab({ foods: foodList, onAdd }) {
 
  const commit = () => {
  if (!selected) return
- const factor = grams / 100
- onAdd({
- foodId: selected.id, name: selected.name, grams,
- kcal: selected.kcal * factor, p: selected.p * factor, c: selected.c * factor, f: selected.f * factor,
- })
+ onAdd(scaleFood(selected, grams))
  setSelected(null); setQ(''); setGrams(100); setPortionKey('')
  }
+
+ const noResults = !!q.trim() && !local.length && !online.length && !searching
 
  return (
  <div>
  <Input placeholder="חפש מזון או ברקוד..." value={q} onChange={e => setQ(e.target.value)} />
- <div style={{ maxHeight: 240, overflowY:'auto', marginTop: 12, display:'grid', gap: 6 }}>
- {list.map(f => (
- <div key={f.id} onClick={() => setSelected(f)} style={{
- display:'flex', justifyContent:'space-between', alignItems:'center', padding: 10,
- background: selected?.id === f.id ? t.color.goldGlow : t.color.bgSoft,
- border: `1px solid ${selected?.id === f.id ? t.color.gold : t.color.border}`,
- borderRadius: t.radius.sm, cursor:'pointer',
- }}>
- <div>
- <div style={{ fontWeight: 600, display:'flex', gap: 8, alignItems:'center'}}>
- {f.name}
- {f.barcode && <Badge color={t.color.textDim}>{f.barcode.slice(-4)}</Badge>}
- {f.source === 'openfoodfacts'&& <Badge color={t.color.info}>OFF</Badge>}
- </div>
- <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>{f.kcal} קק״ל · {f.p}ח׳ · {f.c}פ׳ · {f.f}ש׳ / 100ג׳</div>
- </div>
- <Badge color={t.color.textDim}>{f.cat}</Badge>
- </div>
+
+ <div style={{ maxHeight: 260, overflowY:'auto', marginTop: 12, display:'grid', gap: 6 }}>
+ {!!local.length && (
+ <ResultGroup label={`המאגר שלך (${local.length})`} />
+ )}
+ {local.map(f => (
+ <FoodRow key={f.id} food={f} active={selected?.id === f.id} onPick={() => setSelected(f)} />
  ))}
- {!list.length && <EmptyState icon="" title="לא נמצאו תוצאות"/>}
+
+ {searching && (
+ <div style={{ padding: 12, textAlign:'center', color: t.color.textDim, fontSize: t.font.xs }}>
+ מחפש ב-OpenFoodFacts…
  </div>
+ )}
+ {!!online.length && (
+ <ResultGroup label={`OpenFoodFacts (${online.length})`} />
+ )}
+ {online.map(f => (
+ <FoodRow key={f.id} food={f} active={selected?.id === f.id} onPick={() => setSelected(f)} />
+ ))}
+
+ {noResults && (
+ <EmptyState
+ title="לא נמצאו תוצאות"
+ subtitle={searched ? 'נסה שם אחר, סרוק ברקוד, או הוסף דרך "מזון אישי"' : undefined}
+ />
+ )}
+ </div>
+
  {selected && (
  <div style={{ marginTop: 14, padding: 12, background: t.color.bgSoft, borderRadius: t.radius.md }}>
- <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap: 10, alignItems:'end'}}>
+ <div style={{ fontWeight: 700, marginBottom: 8 }}>{selected.name}</div>
+ <NutrientPreview food={selected} grams={grams} />
+ <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap: 10, alignItems:'end', marginTop: 12 }}>
  <Input type="number"label="גרם"value={grams} onChange={e => { setGrams(+e.target.value || 0); setPortionKey('') }} />
  <Select label="מנה מקובלת"value={portionKey} onChange={e => applyPortion(e.target.value)}>
  <option value="">בחר...</option>
  {Object.keys(portionSizes).map(k => <option key={k} value={k}>{k} ({portionSizes[k]}ג׳)</option>)}
  </Select>
- <Button onClick={commit}>הוסף ({Math.round(selected.kcal * grams/100)} קק״ל)</Button>
+ <Button onClick={commit}>הוסף ({Math.round((selected.kcal || 0) * grams/100)} קק״ל)</Button>
  </div>
  </div>
  )}
+ </div>
+ )
+}
+
+function ResultGroup({ label }) {
+ return (
+ <div style={{
+ fontFamily: t.font.family.mono, fontSize: 9, letterSpacing:'0.2em',
+ color: t.color.silver2, fontWeight: 700, textTransform:'uppercase',
+ padding:'6px 2px 2px',
+ }}>{label}</div>
+ )
+}
+
+function FoodRow({ food: f, active, onPick }) {
+ return (
+ <div onClick={onPick} style={{
+ display:'flex', justifyContent:'space-between', alignItems:'center', gap: 10, padding: 10,
+ background: active ? t.color.goldGlow : t.color.bgSoft,
+ border: `1px solid ${active ? t.color.gold : t.color.border}`,
+ borderRadius: t.radius.sm, cursor:'pointer',
+ }}>
+ {f.image && (
+ <img src={f.image} alt="" style={{ width: 34, height: 34, borderRadius: 6, objectFit:'cover', flexShrink: 0 }} />
+ )}
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <div style={{ fontWeight: 600, display:'flex', gap: 8, alignItems:'center', flexWrap:'wrap'}}>
+ <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth: 220 }}>{f.name}</span>
+ {f.source === 'openfoodfacts' && <Badge color={t.color.info}>OFF</Badge>}
+ </div>
+ {f.brand && <div style={{ fontSize: 10, color: t.color.textMuted }}>{f.brand}</div>}
+ <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>
+ {f.kcal} קק״ל · {f.p}ח׳ · {f.c}פ׳ · {f.f}ש׳ / 100ג׳
+ </div>
+ </div>
+ <Badge color={t.color.textDim}>{f.cat}</Badge>
+ </div>
+ )
+}
+
+// Shows what will actually be logged at the chosen amount, micros included.
+function NutrientPreview({ food, grams }) {
+ const scaled = scaleFood(food, grams)
+ const micros = MICRO_KEYS.filter(k => scaled[k] != null)
+ const cell = (label, value, unit, color) => (
+ <div key={label} style={{ padding:'6px 8px', background: t.color.bgCard, borderRadius: t.radius.sm, textAlign:'center' }}>
+ <div style={{ fontSize: t.font.sm, fontWeight: 800, color: color || t.color.text }}>{value}{unit}</div>
+ <div style={{ fontSize: 9, color: t.color.textMuted }}>{label}</div>
+ </div>
+ )
+ return (
+ <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 6 }}>
+ {cell('קק״ל', Math.round(scaled.kcal), '', t.color.gold)}
+ {cell('חלבון', scaled.p, 'ג׳', t.color.info)}
+ {cell('פחמ׳', scaled.c, 'ג׳')}
+ {cell('שומן', scaled.f, 'ג׳', t.color.warning)}
+ {micros.includes('fiber')  && cell('סיבים', scaled.fiber, 'ג׳', t.color.success)}
+ {micros.includes('sugar')  && cell('סוכר', scaled.sugar, 'ג׳')}
+ {micros.includes('satFat') && cell('רווי', scaled.satFat, 'ג׳')}
+ {micros.includes('sodium') && cell('נתרן', Math.round(scaled.sodium), 'מ״ג')}
  </div>
  )
 }
@@ -195,13 +288,17 @@ function BarcodeTab({ onAdd, onSave }) {
 
  const commit = (alsoSave) => {
  if (!result) return
- const factor = grams / 100
- onAdd({
- foodId: result.id, name: result.name, grams,
- kcal: result.kcal * factor, p: result.p * factor, c: result.c * factor, f: result.f * factor,
- })
+ onAdd(scaleFood(result, grams))
  if (alsoSave && result.source !== 'local') {
- onSave({ id: result.id, name: result.name, cat: result.cat, kcal: result.kcal, p: result.p, c: result.c, f: result.f, barcode: result.barcode })
+ // Keep the micros on the saved copy too, so re-adding it later from the
+ // personal library carries the same detail as the original scan.
+ const saved = {
+ id: result.id, name: result.name, cat: result.cat,
+ kcal: result.kcal, p: result.p, c: result.c, f: result.f,
+ barcode: result.barcode,
+ }
+ for (const k of MICRO_KEYS) if (result[k] != null) saved[k] = result[k]
+ onSave(saved)
  }
  setResult(null); setBarcode(''); setStatus(null); setGrams(100)
  }
@@ -283,12 +380,21 @@ function BarcodeTab({ onAdd, onSave }) {
  </div>
  </div>
 
- <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
+ <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
  <MacroTile label={isRTL ? 'קק״ל' : 'kcal'} value={result.kcal} color={t.color.gold} />
  <MacroTile label={isRTL ? 'חלבון' : 'Protein'} value={result.p} color={t.color.info} />
  <MacroTile label={isRTL ? 'פחמ׳' : 'Carbs'} value={result.c} color={t.color.text} />
  <MacroTile label={isRTL ? 'שומן' : 'Fat'} value={result.f} color={t.color.warning} />
  </div>
+
+ {MICRO_KEYS.some(k => result[k]) && (
+ <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
+ <MacroTile label={isRTL ? 'סיבים' : 'Fiber'} value={result.fiber ?? 0} color={t.color.success} />
+ <MacroTile label={isRTL ? 'סוכר' : 'Sugar'} value={result.sugar ?? 0} color={t.color.text} />
+ <MacroTile label={isRTL ? 'רווי' : 'Sat fat'} value={result.satFat ?? 0} color={t.color.text} />
+ <MacroTile label={isRTL ? 'נתרן מ״ג' : 'Sodium mg'} value={Math.round(result.sodium ?? 0)} color={t.color.text} />
+ </div>
+ )}
 
  <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto', gap: 10, alignItems:'end'}}>
  <Input type="number" label={isRTL ? 'גרם' : 'Grams'} value={grams} onChange={e => setGrams(+e.target.value || 0)} />
@@ -316,9 +422,12 @@ function LazyBarcodeScanner(props) {
  )
 }
 
+const EMPTY_CUSTOM = { name:'', cat:'חלבון', kcal:'', p:'', c:'', f:'', fiber:'', sugar:'', satFat:'', sodium:'' }
+
 function CustomTab({ onAdd, onSave, customFoods }) {
- const [form, setForm] = useState({ name:'', cat:'חלבון', kcal:'', p:'', c:'', f:''})
+ const [form, setForm] = useState(EMPTY_CUSTOM)
  const [grams, setGrams] = useState(100)
+ const [showMicros, setShowMicros] = useState(false)
  const set = (patch) => setForm(f => ({ ...f, ...patch }))
 
  const create = () => {
@@ -328,10 +437,14 @@ function CustomTab({ onAdd, onSave, customFoods }) {
  name: form.name, cat: form.cat,
  kcal: +form.kcal || 0, p: +form.p || 0, c: +form.c || 0, f: +form.f || 0,
  }
+ // Micros are optional — only attach the ones actually filled in, so an
+ // untouched field stays absent rather than logging a fake zero.
+ for (const k of MICRO_KEYS) {
+ if (String(form[k] ?? '').trim() !== '') food[k] = +form[k] || 0
+ }
  onSave(food)
- const factor = grams / 100
- onAdd({ foodId: food.id, name: food.name, grams, kcal: food.kcal * factor, p: food.p * factor, c: food.c * factor, f: food.f * factor })
- setForm({ name:'', cat:'חלבון', kcal:'', p:'', c:'', f:''}); setGrams(100)
+ onAdd(scaleFood(food, grams))
+ setForm(EMPTY_CUSTOM); setGrams(100); setShowMicros(false)
  }
 
  return (
@@ -350,6 +463,23 @@ function CustomTab({ onAdd, onSave, customFoods }) {
  <Input type="number"label="פחמ׳ (ג׳)"value={form.c} onChange={e => set({ c: e.target.value })} />
  <Input type="number"label="שומן (ג׳)"value={form.f} onChange={e => set({ f: e.target.value })} />
  </div>
+
+ <button type="button" onClick={() => setShowMicros(v => !v)} style={{
+ background:'transparent', border:'none', color: t.color.gold, cursor:'pointer',
+ fontFamily:'inherit', fontSize: t.font.xs, textAlign:'start', padding:'2px 0',
+ }}>
+ {showMicros ? '− הסתר ערכים נוספים' : '+ ערכים נוספים (סיבים · סוכר · רווי · נתרן) — לא חובה'}
+ </button>
+
+ {showMicros && (
+ <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 10 }}>
+ <Input type="number"label="סיבים (ג׳)"value={form.fiber} onChange={e => set({ fiber: e.target.value })} />
+ <Input type="number"label="סוכר (ג׳)"value={form.sugar} onChange={e => set({ sugar: e.target.value })} />
+ <Input type="number"label="רווי (ג׳)"value={form.satFat} onChange={e => set({ satFat: e.target.value })} />
+ <Input type="number"label="נתרן (מ״ג)"value={form.sodium} onChange={e => set({ sodium: e.target.value })} />
+ </div>
+ )}
+
  <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap: 10, alignItems:'end'}}>
  <Input type="number"label="כמות שאכלת עכשיו (גרם)" value={grams} onChange={e => setGrams(+e.target.value || 0)} />
  <Button onClick={create} disabled={!form.name}>הוסף למאגר + היום</Button>
