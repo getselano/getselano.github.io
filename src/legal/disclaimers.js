@@ -17,6 +17,10 @@ export const DISCLAIMERS = {
     he: 'הפרשנות של בדיקות דם ניתנת למידע כללי בלבד ואינה מהווה אבחנה רפואית. הערכים ומשמעותם דורשים בדיקה של רופא מוסמך. אין להפסיק טיפול או להתחיל תוסף על סמך המידע כאן.',
     en: 'Blood-marker interpretation is provided for general information only and is not a medical diagnosis. Values and their meaning must be reviewed by a qualified physician. Do not stop treatment or start a supplement based on this information.',
   },
+  supplements: {
+    he: 'תוספי תזונה אינם תרופה ואינם מיועדים לאבחן, לטפל או למנוע מחלה. המידע כאן חינוכי בלבד ומבוסס על ספרות מחקרית כללית — הוא אינו ייעוץ אישי. יש להיוועץ ברופא/ה או דיאטן/ית לפני נטילת תוסף, במיוחד בהריון והנקה, בנטילת תרופות קבועות, במחלה כרונית, או מתחת לגיל 18. אין לחרוג מהמינון המומלץ על האריזה.',
+    en: 'Supplements are not medicine and are not intended to diagnose, treat, or prevent any disease. The information here is educational only and based on general research literature — it is not personal advice. Consult a physician or dietitian before taking any supplement, especially during pregnancy or breastfeeding, while on regular medication, with a chronic condition, or under age 18. Do not exceed the dose stated on the label.',
+  },
   rehab: {
     he: 'תוכן השיקום חינוכי בלבד ואינו תחליף לטיפול של פיסיותרפיסט מוסמך. במקרה של פציעה חריפה, כאב עצבי או תופעה חדשה — פנה/י מיד לאורתופד או פיסיותרפיסט.',
     en: 'Rehab content is educational only and is not a substitute for a licensed physiotherapist. For acute injury, nerve pain, or any new symptom — see an orthopedist or physiotherapist immediately.',
