@@ -15,6 +15,7 @@ import {
 } from '../../../../data/disciplines/hyrox'
 import { WOD_LEVELS, levelFromProfile } from '../../../../data/disciplines/levels'
 import { TechniqueAnalyzer } from '../technique/TechniqueAnalyzer'
+import { CustomWodBuilder } from './CustomWodBuilder'
 
 // The WOD tab shell: 4 discipline chips at top, each routes to its own
 // generator UI. CrossFit keeps the existing full-featured generator.
@@ -139,7 +140,9 @@ function DisciplineStrip({ active, onChange }) {
 // ─── Generic discipline UI (used by gymnastics) ─────────────
 function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programToPlan, context = {} }) {
   const { state, logWorkout, setPlan } = useApp()
-  const [mode, setMode] = useState('single') // 'single' | 'program'
+  // 'custom' is offered where a build-your-own pool exists — the premade
+  // sessions assume a full box, which is not what most people have.
+  const [mode, setMode] = useState('single') // 'single' | 'program' | 'custom'
   const [focus, setFocus] = useState('random')
   const [level, setLevel] = useState(() => levelFromProfile(state.profile?.experience))
   const [wod, setWod] = useState(null)
@@ -171,14 +174,18 @@ function SimpleDiscipline({ disciplineKey, focuses, programs, generate, programT
   return (
     <div>
       {/* Mode toggle */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8, marginBottom: 14 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
         <ModeCard active={mode === 'single'} onClick={() => setMode('single')}
           title="אימון בודד" sub="חד־פעמי · היום" />
+        <ModeCard active={mode === 'custom'} onClick={() => setMode('custom')}
+          title="בנייה עצמאית" sub="לפי הציוד שלך" />
         <ModeCard active={mode === 'program'} onClick={() => setMode('program')}
-          title="תכנית" sub={`${programs[0]?.weeks || 8} שבועות · פרוגרסיה`} />
+          title="תכנית" sub={`${programs[0]?.weeks || 8} שבועות`} />
       </div>
 
-      {mode === 'single' ? (
+      {mode === 'custom' ? (
+        <CustomWodBuilder discipline={disciplineKey} />
+      ) : mode === 'single' ? (
         <>
           <Card style={{ marginBottom: 10 }}>
             <div style={{
