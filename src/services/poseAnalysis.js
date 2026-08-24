@@ -12,7 +12,7 @@
 // from our own origin so the feature does not depend on Google's bucket
 // staying put.
 
-import { evaluateMovement } from '../data/liftCriteria'
+import { evaluateMovement, evaluateFrame } from '../data/liftCriteria'
 
 const WASM_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm'
 const MODEL_URL = `${import.meta.env.BASE_URL || '/'}mediapipe/pose_landmarker_lite.task`
@@ -645,6 +645,10 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
         label: kf.label,
         t: kf.t,
         measures: kf.measures,
+        // Judged here so a reopened clip shows the same verdict without
+        // needing the movement definition again.
+        role: kf.role,
+        verdict: movement ? evaluateFrame(movement, kf.measures, kf.role) : null,
         dataUrl: canvas.toDataURL('image/jpeg', 0.72),
       })
     }
@@ -714,10 +718,12 @@ function pickKeyFrames(frames) {
   }
   const start = withData[0]
 
+  // The role travels with the frame because it decides which criteria apply
+  // to it — a bent knee is a fault at the lockout and correct at the bottom.
   const picks = [
-    { ...start,    label: 'התחלה' },
-    { ...deepest,  label: 'הנקודה הנמוכה' },
-    { ...tallest,  label: 'הנעילה' },
+    { ...start,    label: 'התחלה',          role: 'start'   },
+    { ...deepest,  label: 'הנקודה הנמוכה',  role: 'bottom'  },
+    { ...tallest,  label: 'הנעילה',         role: 'lockout' },
   ]
   // Drop duplicates when the same frame wins two roles (a short clip, or a
   // movement with little vertical travel).

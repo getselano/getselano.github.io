@@ -547,6 +547,8 @@ function SavedClipView({ clip: c, onBack, onDeleted }) {
 
         <CorrectionsNavigator problems={problems} />
 
+        <KeyMoments stills={c.stills} />
+
         {good.length > 0 && (
           <Card>
             <SectionHeader title="מה היה תקין" action={<Badge color={t.color.success}>{good.length}</Badge>} />
@@ -579,6 +581,108 @@ function SavedClipView({ clip: c, onBack, onDeleted }) {
             color: t.color.danger, borderRadius: t.radius.sm, fontSize: 13, fontWeight: 700,
           }}
         >מחק סרטון</button>
+      </div>
+    </div>
+  )
+}
+
+// The three positions a coach actually stops the video on — the start, the
+// bottom, the lockout — each judged against the movement's own criteria.
+//
+// This used to print "knee 172° · hip 158°" under each still, which is a
+// measurement, not a verdict: nothing in it tells the user whether that
+// position was right. Every moment now says whether it held up, and names
+// what did or did not.
+function KeyMoments({ stills }) {
+  if (!stills?.length) return null
+
+  return (
+    <Card>
+      <SectionHeader
+        title="הפוזיציות שנבדקו"
+        subtitle="שלושת הרגעים שקובעים בהרמה — ומה היה נכון בכל אחד"
+      />
+      <div style={{ display:'grid', gap: 12 }}>
+        {stills.map(s => <KeyMomentRow key={s.t} still={s} />)}
+      </div>
+    </Card>
+  )
+}
+
+function KeyMomentRow({ still: s }) {
+  const v = s.verdict
+  const state = v?.verdict || 'unknown'
+  const color = state === 'ok' ? t.color.success
+    : state === 'fix' ? t.color.warning
+    : t.color.silver2
+
+  const badgeText = state === 'ok' ? 'תקין'
+    : state === 'fix' ? 'לתיקון'
+    : state === 'reference' ? 'נקודת ייחוס'
+    : 'לא נמדד'
+
+  return (
+    <div style={{
+      display:'flex', gap: 12, alignItems:'flex-start',
+      padding: 10, background: t.color.bgSoft, borderRadius: t.radius.sm,
+      borderInlineStart: `3px solid ${color}`,
+    }}>
+      <img
+        src={s.dataUrl}
+        alt={s.label}
+        style={{ width: 92, borderRadius: t.radius.sm, display:'block', flexShrink: 0 }}
+      />
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display:'flex', gap: 8, alignItems:'center', flexWrap:'wrap' }}>
+          <span style={{ fontSize: 14, fontWeight: 800 }}>{s.label}</span>
+          <Badge color={color}>{badgeText}</Badge>
+        </div>
+
+        {/* What held up, and what did not — by name, not by number alone */}
+        {v?.failed?.length > 0 && (
+          <div style={{ marginTop: 6, display:'grid', gap: 3 }}>
+            {v.failed.map(f => (
+              <div key={f.id} style={{ fontSize: 12, color: t.color.textDim, lineHeight: 1.6 }}>
+                <span style={{ color: t.color.warning, fontWeight: 700 }}>✕</span>{' '}
+                {f.he}
+                {f.value != null && (
+                  <span style={{ fontFamily: t.font.family.mono, color: t.color.textMuted }}>
+                    {' '}— {f.value}° מול {f.targetHe}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {v?.passed?.length > 0 && (
+          <div style={{ marginTop: 6, display:'grid', gap: 3 }}>
+            {v.passed.map(f => (
+              <div key={f.id} style={{ fontSize: 12, color: t.color.textDim, lineHeight: 1.6 }}>
+                <span style={{ color: t.color.success, fontWeight: 700 }}>✓</span>{' '}
+                {f.he}
+                {f.value != null && (
+                  <span style={{ fontFamily: t.font.family.mono, color: t.color.textMuted }}>
+                    {' '}— {f.value}°
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {state === 'reference' && (
+          <div style={{ fontSize: 12, color: t.color.textMuted, marginTop: 6, lineHeight: 1.6 }}>
+            תנוחת הפתיחה — נקודת ההשוואה לשתי הפוזיציות הבאות, לא נבדקת בפני עצמה.
+          </div>
+        )}
+
+        {state === 'unknown' && (
+          <div style={{ fontSize: 12, color: t.color.textMuted, marginTop: 6, lineHeight: 1.6 }}>
+            לא ניתן היה למדוד את הקריטריונים של התרגיל בפוזיציה הזו.
+          </div>
+        )}
       </div>
     </div>
   )
@@ -622,65 +726,92 @@ function CorrectionsNavigator({ problems, subtitle }) {
           {problems.map(f => <CorrectionCard key={f.id} finding={f} />)}
         </div>
       ) : (
-        <>
-          <CorrectionCard finding={problems[i]} />
-
-          <div style={{ display:'flex', alignItems:'center', gap: 10, marginTop: 12 }}>
-            <StepButton label="הקודם" glyph="›" disabled={i === 0}
-              onClick={() => setIndex(i - 1)} />
-
-            <div style={{ flex: 1, textAlign:'center' }}>
-              <div style={{ fontSize: 12, fontWeight: 800 }}>
-                תיקון {i + 1} מתוך {problems.length}
-              </div>
-              <div style={{ display:'flex', gap: 5, justifyContent:'center', marginTop: 6 }}>
-                {problems.map((f, n) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setIndex(n)}
-                    aria-label={`תיקון ${n + 1}: ${f.he}`}
-                    style={{
-                      width: n === i ? 18 : 7, height: 7, borderRadius: 999,
-                      border:'none', padding: 0, cursor:'pointer',
-                      background: n === i ? t.color.warning : t.color.border,
-                      transition: t.transition,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <StepButton label="הבא" glyph="‹" disabled={i === problems.length - 1}
-              onClick={() => setIndex(i + 1)} />
-          </div>
-        </>
+        <Filmstrip
+          count={problems.length}
+          index={i}
+          onIndexChange={setIndex}
+          label={n => `תיקון ${n + 1} מתוך ${problems.length}`}
+          dotColor={t.color.warning}
+        >
+          {problems.map(f => <CorrectionCard key={f.id} finding={f} />)}
+        </Filmstrip>
       )}
     </div>
   )
 }
 
-// RTL: "next" advances leftward, so the glyphs are mirrored relative to what a
-// left-to-right layout would use.
-function StepButton({ label, glyph, disabled, onClick }) {
+// A horizontally swipeable strip, one item per screen.
+//
+// Swiping is how you move through images on a phone; arrows are a desktop
+// habit. Scroll-snap does the paging natively, which keeps the gesture at the
+// speed of the finger instead of animating from React state.
+function Filmstrip({ children, count, index, onIndexChange, label, dotColor }) {
+  const scroller = useRef(null)
+  const items = React.Children.toArray(children)
+
+  // Scroll position is the source of truth while the finger is down; this only
+  // reads it back so the counter and dots stay in step.
+  const onScroll = () => {
+    const el = scroller.current
+    if (!el) return
+    const width = el.clientWidth || 1
+    // RTL scrollLeft is negative in most engines and positive in some, so the
+    // magnitude is what can be relied on.
+    const next = Math.round(Math.abs(el.scrollLeft) / width)
+    if (next !== index && next >= 0 && next < count) onIndexChange(next)
+  }
+
+  const jumpTo = (n) => {
+    const el = scroller.current
+    if (!el) return onIndexChange(n)
+    const width = el.clientWidth || 1
+    const sign = el.scrollLeft <= 0 ? -1 : 1
+    el.scrollTo({ left: sign * n * width, behavior: 'smooth' })
+    onIndexChange(n)
+  }
+
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      style={{
-        display:'flex', alignItems:'center', gap: 6,
-        background: disabled ? 'transparent' : t.color.bgSoft,
-        border:`1px solid ${disabled ? t.color.border : t.color.gold}`,
-        color: disabled ? t.color.silver3 : t.color.gold,
-        padding:'10px 14px', borderRadius: t.radius.sm,
-        cursor: disabled ? 'default' : 'pointer',
-        fontFamily:'inherit', fontSize: 12, fontWeight: 700,
-        opacity: disabled ? 0.4 : 1, transition: t.transition,
-      }}
-    >
-      <span style={{ fontSize: 16, lineHeight: 1 }}>{glyph}</span>
-      {label}
-    </button>
+    <div>
+      <div
+        ref={scroller}
+        onScroll={onScroll}
+        style={{
+          display:'flex', overflowX:'auto', overflowY:'hidden',
+          scrollSnapType:'x mandatory', scrollbarWidth:'none',
+          WebkitOverflowScrolling:'touch', gap: 0,
+        }}
+      >
+        {items.map((child, n) => (
+          <div key={n} style={{
+            flex:'0 0 100%', minWidth:'100%', scrollSnapAlign:'center',
+            // Keeps neighbours from bleeding into the active card's edges.
+            paddingInline: 1, boxSizing:'border-box',
+          }}>{child}</div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 12, textAlign:'center' }}>
+        <div style={{ fontSize: 12, fontWeight: 800 }}>{label(index)}</div>
+        <div style={{ display:'flex', gap: 5, justifyContent:'center', marginTop: 6 }}>
+          {Array.from({ length: count }, (_, n) => (
+            <button
+              key={n}
+              onClick={() => jumpTo(n)}
+              aria-label={`${n + 1}`}
+              style={{
+                width: n === index ? 18 : 7, height: 7, borderRadius: 999,
+                border:'none', padding: 0, cursor:'pointer',
+                background: n === index ? dotColor : t.color.border,
+                transition: t.transition,
+              }}
+            />
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: t.color.textMuted, marginTop: 6 }}>
+          החלק הצידה למעבר
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -994,25 +1125,7 @@ function Report({ result, movement, coaching, stage, onRetry }) {
         </Card>
       )}
 
-      {/* Key moments */}
-      {stills?.length > 0 && (
-        <Card>
-          <SectionHeader title="נקודות מפתח" subtitle="הפריימים שזוהו אוטומטית מגובה האגן" />
-          <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.min(3, stills.length)}, 1fr)`, gap: 8 }}>
-            {stills.map(s => (
-              <div key={s.t}>
-                <img src={s.dataUrl} alt={s.label} style={{ width:'100%', borderRadius: t.radius.sm, display:'block' }} />
-                <div style={{ fontSize: 11, color: t.color.textDim, marginTop: 4, textAlign:'center' }}>{s.label}</div>
-                {s.measures?.knee != null && (
-                  <div style={{ fontSize: 10, color: t.color.textMuted, textAlign:'center', fontFamily: t.font.family.mono }}>
-                    ברך {Math.round(s.measures.knee)}° · ירך {Math.round(s.measures.hip ?? 0)}°
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      <KeyMoments stills={stills} />
 
       {/* AI coaching wording */}
       {stage === 'coaching' && (

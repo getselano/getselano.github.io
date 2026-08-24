@@ -797,6 +797,75 @@ function targetPhrase(check) {
 // ─── Evaluation ───────────────────────────────────────────────────
 // Turn the measured summary into pass/fail findings for one movement.
 // Returns [] rather than guessing when the metric wasn't measurable.
+// Judges one frame on its own, rather than the clip as a whole.
+//
+// The clip-level pass reports the worst moment of the whole set. That is the
+// right thing for a fault list, but it says nothing about a particular
+// position, which is what a still of "the bottom" or "the lockout" is asking
+// about. This answers that: at this instant, which of the movement's criteria
+// did the position meet?
+// `role` says which moment of the lift this frame is: 'bottom' (the lowest
+// position), 'lockout' (the most extended), or 'start' (the setup).
+//
+// The role decides which checks even apply, and it has to. A jerk asks for a
+// bent knee at the dip and a straight knee at the finish — both on the same
+// joint. Judging every check against every frame would report the lockout
+// criterion as failed at the bottom of the dip, where a bent knee is exactly
+// what is wanted. A check's `stat` records which extreme it was written about:
+// 'min' checks describe the bottom, 'max' checks describe the lockout.
+const ROLE_STAT = { bottom: 'min', lockout: 'max' }
+
+export function evaluateFrame(movement, measures, role) {
+  const empty = { verdict: 'unknown', passed: [], failed: [], role: role || null }
+  if (!movement || !measures) return empty
+
+  // The setup frame is a reference for the two that follow, not a judged
+  // position — nothing in the criteria describes it.
+  const wantStat = ROLE_STAT[role]
+  if (!wantStat) return { ...empty, verdict: 'reference' }
+
+  const passed = []
+  const failed = []
+
+  for (const check of movement.checks) {
+    if (check.type === 'depth') {
+      // Depth is a statement about the bottom, and never applies to a movement
+      // performed upside down.
+      if (role !== 'bottom' || movement.inverted || measures.hipBelowKnee == null) continue
+      const ok = measures.hipBelowKnee > 0
+      ;(ok ? passed : failed).push({ id: check.id, he: check.he, value: null, limit: null })
+      continue
+    }
+
+    if (check.stat !== wantStat) continue
+
+    const value = measures[check.metric]
+    if (value == null) continue
+
+    let ok
+    if (check.type === 'max' || check.type === 'min') ok = value <= check.limit
+    else if (check.type === 'atLeast') ok = value >= check.limit
+    else continue
+
+    ;(ok ? passed : failed).push({
+      id: check.id,
+      he: check.he,
+      value: +value.toFixed(0),
+      limit: check.limit,
+      type: check.type,
+      jointHe: JOINT_HE[check.metric] || check.metric,
+      targetHe: targetPhrase(check),
+    })
+  }
+
+  return {
+    verdict: !passed.length && !failed.length ? 'unknown' : failed.length ? 'fix' : 'ok',
+    passed,
+    failed,
+    role,
+  }
+}
+
 export function evaluateMovement(movement, summary) {
   if (!movement || !summary) return []
   const findings = []
