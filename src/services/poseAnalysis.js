@@ -392,6 +392,135 @@ function drawArc(ctx, vertex, p1, p2, w) {
   ctx.stroke()
 }
 
+// Paints a frame captured during the pass back onto the working canvas, so it
+// can be annotated. Resolves false rather than throwing if the image will not
+// load — a missing still is worth losing, the whole report is not.
+function restoreFrame(ctx, dataUrl, w, h) {
+  if (!dataUrl) return Promise.resolve(false)
+  return new Promise((resolve) => {
+    const img = new Image()
+    const done = (okFlag) => resolve(okFlag)
+    img.onload = () => {
+      ctx.clearRect(0, 0, w, h)
+      ctx.drawImage(img, 0, 0, w, h)
+      done(true)
+    }
+    img.onerror = () => done(false)
+    img.src = dataUrl
+  })
+}
+
+// ─── Frame sampling ───────────────────────────────────────────────
+//
+// Two strategies, in order of reliability on the devices this actually runs
+// on. Playing the clip and taking frames as they are painted is what mobile
+// browsers are built to do; stepping through it with `currentTime` is not, and
+// on iOS Safari a seek can simply never complete. Seeking is kept only as a
+// fallback for the case where playback is refused outright.
+
+async function sampleFrames(video, { duration, step, onFrame, signal }) {
+  try {
+    await playbackSample(video, { duration, step, onFrame, signal })
+    return
+  } catch (err) {
+    if (err?.message === 'aborted') throw err
+    if (err?.isFatal) throw err
+    console.warn('[poseAnalysis] playback sampling failed, falling back to seeking:', err?.message || err)
+  }
+
+  // Fallback: step through with seeks.
+  for (let tSec = 0; tSec < duration; tSec += step) {
+    if (signal?.aborted) throw new Error('aborted')
+    await seek(video, tSec)
+    onFrame(tSec)
+  }
+}
+
+// Plays the clip through once and takes a frame every `step` seconds of media
+// time. Faster than real time where the browser allows it, and it never seeks.
+async function playbackSample(video, { duration, step, onFrame, signal }) {
+  video.currentTime = 0
+  video.muted = true
+  // Analysis is not playback, so run it as fast as the browser will allow.
+  // Safari clamps this; whatever it settles on is still faster than seeking.
+  try { video.playbackRate = 2 } catch { /* keep 1x */ }
+
+  await video.play()
+
+  return new Promise((resolve, reject) => {
+    let nextAt = 0
+    let done = false
+    let lastSeen = -1
+    let stalledFor = 0
+
+    const finish = (err) => {
+      if (done) return
+      done = true
+      clearInterval(watchdog)
+      video.removeEventListener('ended', onEnded)
+      try { video.pause() } catch { /* already stopped */ }
+      err ? reject(err) : resolve()
+    }
+
+    // Playback can stall silently — a decoder that gives up produces neither
+    // frames nor an error. Without this the promise would never settle, which
+    // is the failure mode we are here to remove.
+    const watchdog = setInterval(() => {
+      if (signal?.aborted) return finish(new Error('aborted'))
+      if (video.currentTime > lastSeen + 0.01) {
+        lastSeen = video.currentTime
+        stalledFor = 0
+        return
+      }
+      stalledFor += 1
+      if (stalledFor >= 6) {
+        finish(new Error('playback stalled — no frames advanced for 6s'))
+      }
+    }, 1000)
+
+    const onEnded = () => finish()
+    video.addEventListener('ended', onEnded)
+
+    const take = (mediaTime) => {
+      if (done) return
+      if (signal?.aborted) return finish(new Error('aborted'))
+      if (mediaTime + 1e-6 >= nextAt) {
+        try {
+          onFrame(Math.min(mediaTime, duration))
+        } catch (err) {
+          // A graph failure is not something a different sampling strategy
+          // would fix, so it must not trigger the seek fallback.
+          err.isFatal = true
+          return finish(err)
+        }
+        // Skip past any samples this frame overshot, so a low frame rate
+        // cannot make the loop fall behind and over-sample.
+        while (nextAt <= mediaTime + 1e-6) nextAt += step
+      }
+      if (mediaTime >= duration) finish()
+    }
+
+    // requestVideoFrameCallback hands us the exact media time of each painted
+    // frame. Where it is unavailable, rAF plus currentTime is close enough at
+    // the sampling rates used here.
+    if (typeof video.requestVideoFrameCallback === 'function') {
+      const step0 = (_now, meta) => {
+        if (done) return
+        take(meta.mediaTime)
+        if (!done) video.requestVideoFrameCallback(step0)
+      }
+      video.requestVideoFrameCallback(step0)
+    } else {
+      const tick = () => {
+        if (done) return
+        take(video.currentTime)
+        if (!done) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    }
+  })
+}
+
 // ─── Video → frames → measurements ────────────────────────────────
 
 // Decode the clip, run pose detection at SAMPLE_FPS, and return one
@@ -404,8 +533,23 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
   const video = document.createElement('video')
   video.src = url
   video.muted = true
+  video.defaultMuted = true
   video.playsInline = true
   video.preload = 'auto'
+  // iOS Safari needs both spellings to decode inline instead of taking the
+  // clip fullscreen.
+  video.setAttribute('playsinline', '')
+  video.setAttribute('webkit-playsinline', '')
+  video.setAttribute('muted', '')
+
+  // Attached, not orphaned. iOS Safari will not reliably decode or seek a
+  // <video> that is not in the document, which is why frame stepping stalled
+  // there. Kept effectively invisible rather than display:none, since a
+  // display:none element is not guaranteed to decode either.
+  video.style.cssText =
+    'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;' +
+    'pointer-events:none;z-index:-1'
+  document.body.appendChild(video)
 
   try {
     await once(video, 'loadedmetadata')
@@ -433,12 +577,12 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
     const tsBase = nextTimestampBase()
     onProgress?.('analyzing')
 
-    for (let tSec = 0; tSec < duration; tSec += step) {
-      if (signal?.aborted) throw new Error('aborted')
-      await seek(video, tSec)
+    // One measurement per sampled frame. `onFrame` is handed each decoded
+    // frame by whichever sampling strategy succeeded.
+    const onFrame = (tSec) => {
       ctx.drawImage(video, 0, 0, w, h)
 
-      // A browser that reports a seek but paints nothing produces zero
+      // A browser that reports a frame but paints nothing produces zero
       // landmarks, which would otherwise be blamed on the user's framing.
       // Counted across the whole clip and judged at the end: a lift can
       // genuinely open on a dark frame, so the first few proving black is not
@@ -451,17 +595,25 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
         result = detectFrame(landmarker, canvas, tsBase + Math.round(tSec * 1000))
       } catch (err) {
         // The graph is unusable from here on, so drop it rather than letting
-        // the rest of the loop — and every later attempt — fail the same way.
+        // the rest of the pass — and every later attempt — fail the same way.
         discardLandmarker()
         throw new Error(describeGraphError(err))
       }
       const lm = result?.landmarks?.[0]
       const m = lm ? measureFrame(lm) : null
-      // Landmarks are retained so a failing frame can be re-drawn with the
-      // skeleton and the offending angle marked on it.
-      frames.push({ t: +tSec.toFixed(2), measures: m, landmarks: lm || null })
+      frames.push({
+        t: +tSec.toFixed(2),
+        measures: m,
+        landmarks: lm || null,
+        // The raw frame is kept so stills and fault annotations can be drawn
+        // later without returning to the video. Revisiting a timestamp is
+        // exactly what does not work reliably on iOS, so we never ask.
+        raw: canvas.toDataURL('image/jpeg', 0.6),
+      })
       onProgress?.('analyzing', Math.min(1, tSec / duration))
     }
+
+    await sampleFrames(video, { duration, step, onFrame, signal })
 
     // Judged now that the whole clip has been sampled. Nearly every frame
     // coming back black means the decoder never produced an image, which is a
@@ -482,11 +634,12 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
     const summary = summarize(detected)
 
     const keyFrames = pickKeyFrames(frames)
-    // Re-seek to each key moment and capture a still for the coaching prompt.
+    // Redrawn from the frame captured during the pass rather than by going
+    // back to the video, which is the part that fails on iOS.
     const stills = []
     for (const kf of keyFrames) {
-      await seek(video, kf.t)
-      ctx.drawImage(video, 0, 0, w, h)
+      const painted = await restoreFrame(ctx, kf.raw, w, h)
+      if (!painted) continue
       if (kf.landmarks) drawSkeleton(ctx, kf.landmarks, w, h)
       stills.push({
         label: kf.label,
@@ -496,8 +649,8 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
       })
     }
 
-    // Evaluate here rather than in the caller: annotating a fault means
-    // re-seeking the video, and the element is disposed when this returns.
+    // Evaluate here rather than in the caller: annotating a fault needs the
+    // captured frames, which are discarded when this returns.
     const findings = movement ? evaluateMovement(movement, summary) : []
     const byTime = new Map(frames.map(f => [f.t, f]))
 
@@ -508,8 +661,8 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
       const frame = byTime.get(at)
       if (!frame?.landmarks) continue
 
-      await seek(video, at)
-      ctx.drawImage(video, 0, 0, w, h)
+      const painted = await restoreFrame(ctx, frame.raw, w, h)
+      if (!painted) continue
       drawSkeleton(ctx, frame.landmarks, w, h)
       if (finding.measured) {
         drawAngleFault(ctx, frame.landmarks, w, h, {
@@ -526,7 +679,11 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
     }
 
     return {
-      frames,
+      // The raw captures are dropped here. They exist only so stills and
+      // fault frames can be drawn without revisiting the video; carrying
+      // sixty JPEGs into the caller — and into the archive record — would
+      // cost megabytes for nothing.
+      frames: frames.map(({ raw, ...f }) => f),
       stills,
       findings,
       duration: +duration.toFixed(2),
@@ -536,7 +693,10 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
     }
   } finally {
     URL.revokeObjectURL(url)
-    video.src = ''
+    try { video.pause() } catch { /* already stopped */ }
+    video.removeAttribute('src')
+    video.load()
+    video.remove()
   }
 }
 
