@@ -776,6 +776,24 @@ export function searchMovements(discipline, query) {
     )
 }
 
+// Hebrew name of each measured joint, for the on-image caption.
+const JOINT_HE = {
+  knee: 'זווית הברך',
+  hip: 'זווית הירך',
+  elbow: 'זווית המרפק',
+  torsoLean: 'נטיית הגו מהאנך',
+  shinAngle: 'זווית השוק',
+}
+
+// What the movement asks for, phrased for a reader rather than as an operator.
+function targetPhrase(check) {
+  if (check.type === 'atLeast') return `לפחות ${check.limit}°`
+  if (check.type === 'max') return `לכל היותר ${check.limit}°`
+  // 'min' is a range-of-motion check: the joint must bend at least this far,
+  // which in angle terms means reaching a value at or below the limit.
+  return `להגיע ל-${check.limit}° או פחות`
+}
+
 // ─── Evaluation ───────────────────────────────────────────────────
 // Turn the measured summary into pass/fail findings for one movement.
 // Returns [] rather than guessing when the metric wasn't measurable.
@@ -792,6 +810,8 @@ export function evaluateMovement(movement, summary) {
         message: summary.reachedDepth ? check.pass : check.fail,
         tip: summary.reachedDepth ? null : check.tip,
         measured: null,
+        // The deepest moment in the clip — the frame worth showing.
+        atTime: summary.depthAt ?? null,
       })
       continue
     }
@@ -810,7 +830,17 @@ export function evaluateMovement(movement, summary) {
       id: check.id, he: check.he, ok,
       message: ok ? check.pass : check.fail,
       tip: ok ? null : check.tip,
-      measured: { value, limit: check.limit, metric: check.metric, stat: check.stat },
+      measured: {
+        value, limit: check.limit, metric: check.metric,
+        stat: check.stat, type: check.type,
+        // Signed gap between what happened and what the movement asks for.
+        delta: +(check.type === 'atLeast' ? check.limit - value : value - check.limit).toFixed(1),
+        targetHe: targetPhrase(check),
+        jointHe: JOINT_HE[check.metric] || check.metric,
+      },
+      // Timestamp of the frame that produced this extreme, so the report can
+      // show the exact moment rather than a generic still.
+      atTime: stat[`${check.stat}At`] ?? null,
     })
   }
 

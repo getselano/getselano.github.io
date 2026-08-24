@@ -3,7 +3,7 @@ import { t } from '../../../../theme/tokens'
 import { useApp } from '../../../../store/AppStore'
 import { Card, Button, Badge, SectionHeader } from '../../../../components/ui/UI'
 import { DisclaimerNote } from '../../../../components/legal/DisclaimerNote'
-import { groupedMovements, searchMovements, evaluateMovement } from '../../../../data/liftCriteria'
+import { groupedMovements, searchMovements } from '../../../../data/liftCriteria'
 import { analyzeVideo, POSE_LIMITS } from '../../../../services/poseAnalysis'
 import { coachTechnique, aiEnabled } from '../../../../services/aiCoach'
 
@@ -56,7 +56,10 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
     setPhase('working'); setError(''); setResult(null); setCoaching(null)
 
     try {
+      // The movement goes in so the analyzer can annotate faulted frames while
+      // the video element is still alive — it is disposed when this returns.
       const analysis = await analyzeVideo(file, {
+        movement,
         signal: ctrl.signal,
         onProgress: (s, p) => {
           setStage(s)
@@ -65,8 +68,8 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
       })
       if (ctrl.signal.aborted) return
 
-      const findings = evaluateMovement(movement, analysis.summary)
-      setResult({ ...analysis, findings })
+      const findings = analysis.findings
+      setResult(analysis)
       setPhase('done')
 
       // Coaching text is a bonus layer — the measured report already stands
@@ -210,6 +213,90 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
 // Typing beats scrolling once the list passes ~20 entries. Matches Hebrew and
 // English names plus the internal id, so "power clean", "פאוור" and
 // "power_clean" all land on the same movement.
+// One fault, shown on the frame where it actually happened. The overlay marks
+// the joint and prints measured against required; the text below spells out
+// the gap in words and what to do about it.
+function CorrectionCard({ finding: f }) {
+  const m = f.measured
+  return (
+    <Card style={{ borderColor: t.color.warning, padding: 0, overflow:'hidden' }}>
+      {f.frame?.dataUrl && (
+        <img
+          src={f.frame.dataUrl}
+          alt={f.he}
+          style={{ width:'100%', display:'block', background: t.color.bg }}
+        />
+      )}
+
+      <div style={{ padding: 14 }}>
+        <div style={{ display:'flex', gap: 8, alignItems:'center', flexWrap:'wrap', marginBottom: 8 }}>
+          <span style={{ fontWeight: 800, fontSize: 15 }}>{f.he}</span>
+          <Badge color={t.color.warning}>לתיקון</Badge>
+          {f.frame?.t != null && (
+            <span style={{ fontSize: 11, color: t.color.textMuted, fontFamily: t.font.family.mono }}>
+              שנייה {f.frame.t}
+            </span>
+          )}
+        </div>
+
+        {/* measured vs required, side by side */}
+        {m && (
+          <div style={{
+            display:'grid', gridTemplateColumns:'1fr auto 1fr', gap: 10,
+            alignItems:'center', marginBottom: 12,
+            padding: 12, background: t.color.bgSoft, borderRadius: t.radius.sm,
+          }}>
+            <div style={{ textAlign:'center' }}>
+              <div style={{
+                fontFamily: t.font.family.mono, fontSize: 9, letterSpacing:'0.16em',
+                color: t.color.silver2, fontWeight: 700, marginBottom: 4,
+              }}>בוצע בפועל</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: t.color.warning, lineHeight: 1 }}>
+                {Math.round(m.value)}°
+              </div>
+            </div>
+
+            <div style={{ fontSize: 20, color: t.color.textMuted }}>←</div>
+
+            <div style={{ textAlign:'center' }}>
+              <div style={{
+                fontFamily: t.font.family.mono, fontSize: 9, letterSpacing:'0.16em',
+                color: t.color.silver2, fontWeight: 700, marginBottom: 4,
+              }}>נדרש</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: t.color.success, lineHeight: 1 }}>
+                {m.type === 'atLeast' ? '≥' : '≤'}{m.limit}°
+              </div>
+            </div>
+          </div>
+        )}
+
+        {m && (
+          <div style={{ fontSize: 12, color: t.color.textDim, marginBottom: 10, lineHeight: 1.7 }}>
+            {m.jointHe} הגיעה ל-<b style={{ color: t.color.warning }}>{Math.round(m.value)}°</b>,
+            והתרגיל דורש {m.targetHe} — פער של{' '}
+            <b style={{ color: t.color.text }}>{Math.abs(Math.round(m.delta))}°</b>.
+          </div>
+        )}
+
+        <div style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 10 }}>{f.message}</div>
+
+        {f.tip && (
+          <div style={{
+            padding: 10, background: t.color.goldGlow, borderRadius: t.radius.sm,
+            borderInlineStart: `3px solid ${t.color.gold}`,
+          }}>
+            <div style={{
+              fontFamily: t.font.family.mono, fontSize: 9, letterSpacing:'0.16em',
+              color: t.color.gold, fontWeight: 700, textTransform:'uppercase', marginBottom: 4,
+            }}>איך מתקנים</div>
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>{f.tip}</div>
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 function MovementSearch({ value, onChange }) {
   return (
     <div style={{ position:'relative', marginBottom: 16 }}>
@@ -365,45 +452,54 @@ function Report({ result, movement, coaching, stage, onRetry }) {
         </Card>
       )}
 
-      {/* Rule-based findings — these come from the measurements, not the AI */}
-      <Card>
-        <SectionHeader
-          title="מה נמדד"
-          subtitle={`${duration} שניות · ${Math.round(coverage * 100)}% מהפריימים זוהו`}
-          action={<Badge color={problems.length ? t.color.warning : t.color.success}>
-            {problems.length ? `${problems.length} לתיקון` : 'תקין'}
-          </Badge>}
-        />
-        <div style={{ display:'grid', gap: 8 }}>
-          {[...problems, ...good].map(f => (
-            <div key={f.id} style={{
-              padding: 12, background: t.color.bgSoft, borderRadius: t.radius.sm,
-              borderInlineStart: `3px solid ${f.ok ? t.color.success : t.color.warning}`,
-            }}>
-              <div style={{ display:'flex', gap: 8, alignItems:'center', flexWrap:'wrap' }}>
-                <span style={{ fontWeight: 700, fontSize: 14 }}>{f.he}</span>
-                <Badge color={f.ok ? t.color.success : t.color.warning}>
-                  {f.ok ? 'תקין' : 'לתיקון'}
-                </Badge>
-                {f.measured && (
-                  <span style={{ fontSize: 11, color: t.color.textMuted, fontFamily: t.font.family.mono }}>
-                    {f.measured.value}° / סף {f.measured.limit}°
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 13, color: t.color.textDim, marginTop: 4, lineHeight: 1.6 }}>{f.message}</div>
-              {f.tip && (
-                <div style={{ fontSize: 12, color: t.color.gold, marginTop: 6, lineHeight: 1.6 }}>{f.tip}</div>
-              )}
-            </div>
-          ))}
-          {!findings.length && (
-            <div style={{ fontSize: 13, color: t.color.textDim }}>
-              לא הצלחנו למדוד אף אחד מהקריטריונים של התרגיל הזה בקליפ. נסה לצלם שוב מהצד.
-            </div>
-          )}
+      {/* Each fault, on the frame it happened, with the required angle */}
+      {problems.length > 0 && (
+        <div>
+          <SectionHeader
+            title={`${problems.length} תיקונים`}
+            subtitle={`${duration} שניות · ${Math.round(coverage * 100)}% מהפריימים זוהו`}
+          />
+          <div style={{ display:'grid', gap: 14 }}>
+            {problems.map(f => <CorrectionCard key={f.id} finding={f} />)}
+          </div>
         </div>
-      </Card>
+      )}
+
+      {good.length > 0 && (
+        <Card>
+          <SectionHeader
+            title="מה היה תקין"
+            action={<Badge color={t.color.success}>{good.length}</Badge>}
+          />
+          <div style={{ display:'grid', gap: 8 }}>
+            {good.map(f => (
+              <div key={f.id} style={{
+                padding: 10, background: t.color.bgSoft, borderRadius: t.radius.sm,
+                borderInlineStart: `3px solid ${t.color.success}`,
+              }}>
+                <div style={{ display:'flex', gap: 8, alignItems:'center', flexWrap:'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{f.he}</span>
+                  {f.measured && (
+                    <span style={{ fontSize: 11, color: t.color.textMuted, fontFamily: t.font.family.mono }}>
+                      {f.measured.value}°
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: t.color.textDim, marginTop: 3 }}>{f.message}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {!findings.length && (
+        <Card>
+          <div style={{ fontSize: 13, color: t.color.textDim, lineHeight: 1.7 }}>
+            לא הצלחנו למדוד אף אחד מהקריטריונים של התרגיל הזה בקליפ. נסה לצלם שוב מהצד,
+            עם כל הגוף בפריים.
+          </div>
+        </Card>
+      )}
 
       {/* Key moments */}
       {stills?.length > 0 && (

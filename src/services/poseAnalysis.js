@@ -12,6 +12,8 @@
 // from our own origin so the feature does not depend on Google's bucket
 // staying put.
 
+import { evaluateMovement } from '../data/liftCriteria'
+
 const WASM_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm'
 const MODEL_URL = `${import.meta.env.BASE_URL || '/'}mediapipe/pose_landmarker_lite.task`
 
@@ -161,11 +163,150 @@ function meanVisibility(points) {
   return +(vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(3)
 }
 
+// ─── Drawing the correction onto the frame ────────────────────────
+// A number in a table is abstract; the same number drawn on the joint it came
+// from is not. Each faulted frame gets the skeleton, an arc on the offending
+// joint, and a label reading measured → required.
+
+const SKELETON_COLOR = 'rgba(255,255,255,0.55)'
+const JOINT_COLOR    = 'rgba(255,255,255,0.85)'
+const FAULT_COLOR    = '#e0a05a'
+const TARGET_COLOR   = '#6fbf85'
+
+// Which three landmarks form each measured angle. torsoLean and shinAngle are
+// segment-vs-vertical rather than three-point, and carry `vertical: true`.
+function jointPoints(metric, lm) {
+  const side = facingSide(lm)
+  const P = (name) => lm[LM[`${side}${name}`]]
+  switch (metric) {
+    case 'knee':  return { a: P('Hip'),      b: P('Knee'),  c: P('Ankle') }
+    case 'hip':   return { a: P('Shoulder'), b: P('Hip'),   c: P('Knee') }
+    case 'elbow': return { a: P('Shoulder'), b: P('Elbow'), c: P('Wrist') }
+    case 'torsoLean': return {
+      a: mid(lm[LM.leftHip], lm[LM.rightHip]),
+      b: mid(lm[LM.leftShoulder], lm[LM.rightShoulder]),
+      vertical: true,
+    }
+    case 'shinAngle': return { a: P('Ankle'), b: P('Knee'), vertical: true }
+    default: return null
+  }
+}
+
+function drawSkeleton(ctx, lm, w, h) {
+  const side = facingSide(lm)
+  const P = (name) => lm[LM[`${side}${name}`]]
+  const chain = [
+    [P('Shoulder'), P('Elbow')], [P('Elbow'), P('Wrist')],
+    [P('Shoulder'), P('Hip')],
+    [P('Hip'), P('Knee')], [P('Knee'), P('Ankle')], [P('Ankle'), P('FootIndex')],
+  ]
+  ctx.lineWidth = Math.max(2, w / 240)
+  ctx.strokeStyle = SKELETON_COLOR
+  ctx.lineCap = 'round'
+  for (const [p, q] of chain) {
+    if (!p || !q) continue
+    ctx.beginPath()
+    ctx.moveTo(p.x * w, p.y * h)
+    ctx.lineTo(q.x * w, q.y * h)
+    ctx.stroke()
+  }
+  ctx.fillStyle = JOINT_COLOR
+  const r = Math.max(3, w / 190)
+  for (const [p] of chain) {
+    if (!p) continue
+    ctx.beginPath()
+    ctx.arc(p.x * w, p.y * h, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+// Rounded label with a dark plate so it stays readable over any footage.
+function drawLabel(ctx, x, y, lines, w) {
+  const fs = Math.max(12, Math.round(w / 34))
+  ctx.font = `700 ${fs}px system-ui, -apple-system, sans-serif`
+  const widths = lines.map(l => ctx.measureText(l.text).width)
+  const boxW = Math.max(...widths) + fs
+  const boxH = lines.length * fs * 1.45 + fs * 0.6
+  // Keep the plate inside the frame
+  const bx = Math.min(Math.max(4, x), w - boxW - 4)
+  const by = Math.max(4, y)
+
+  ctx.fillStyle = 'rgba(12,10,8,0.82)'
+  ctx.beginPath()
+  const rad = fs * 0.4
+  ctx.moveTo(bx + rad, by)
+  ctx.arcTo(bx + boxW, by, bx + boxW, by + boxH, rad)
+  ctx.arcTo(bx + boxW, by + boxH, bx, by + boxH, rad)
+  ctx.arcTo(bx, by + boxH, bx, by, rad)
+  ctx.arcTo(bx, by, bx + boxW, by, rad)
+  ctx.fill()
+
+  lines.forEach((l, i) => {
+    ctx.fillStyle = l.color || '#ffffff'
+    ctx.fillText(l.text, bx + fs / 2, by + fs * 1.1 + i * fs * 1.45)
+  })
+  return { boxW, boxH }
+}
+
+// Marks the offending joint: highlighted segments, an arc across the angle,
+// and the measured value against what the movement requires.
+function drawAngleFault(ctx, lm, w, h, { metric, measured, limit, type }) {
+  const pts = jointPoints(metric, lm)
+  if (!pts?.a || !pts?.b) return
+
+  const A = { x: pts.a.x * w, y: pts.a.y * h }
+  const B = { x: pts.b.x * w, y: pts.b.y * h }
+  const C = pts.c ? { x: pts.c.x * w, y: pts.c.y * h } : null
+
+  ctx.lineWidth = Math.max(3, w / 160)
+  ctx.strokeStyle = FAULT_COLOR
+  ctx.lineCap = 'round'
+
+  if (pts.vertical) {
+    // Segment against a vertical reference dropped from the upper point.
+    ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke()
+    const refLen = Math.abs(B.y - A.y) || h * 0.2
+    ctx.setLineDash([6, 6])
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'
+    ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(A.x, A.y - refLen); ctx.stroke()
+    ctx.setLineDash([])
+    drawArc(ctx, A, { x: A.x, y: A.y - refLen }, B, w)
+  } else {
+    ctx.beginPath()
+    ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y)
+    if (C) ctx.lineTo(C.x, C.y)
+    ctx.stroke()
+    if (C) drawArc(ctx, B, A, C, w)
+  }
+
+  const vertex = pts.vertical ? A : B
+  const rel = type === 'atLeast' ? '≥' : '≤'
+  drawLabel(ctx, vertex.x + w * 0.03, vertex.y - h * 0.06, [
+    { text: `${Math.round(measured)}°`, color: FAULT_COLOR },
+    { text: `${rel} ${limit}°`, color: TARGET_COLOR },
+  ], w)
+}
+
+function drawArc(ctx, vertex, p1, p2, w) {
+  const r = Math.max(18, w / 12)
+  const a1 = Math.atan2(p1.y - vertex.y, p1.x - vertex.x)
+  const a2 = Math.atan2(p2.y - vertex.y, p2.x - vertex.x)
+  // Sweep the short way round so the arc traces the interior angle
+  let diff = a2 - a1
+  while (diff > Math.PI) diff -= 2 * Math.PI
+  while (diff < -Math.PI) diff += 2 * Math.PI
+  ctx.strokeStyle = FAULT_COLOR
+  ctx.lineWidth = Math.max(2, w / 260)
+  ctx.beginPath()
+  ctx.arc(vertex.x, vertex.y, r, a1, a1 + diff, diff < 0)
+  ctx.stroke()
+}
+
 // ─── Video → frames → measurements ────────────────────────────────
 
 // Decode the clip, run pose detection at SAMPLE_FPS, and return one
 // measurement per sampled frame plus the canvas stills for key moments.
-export async function analyzeVideo(file, { onProgress, signal } = {}) {
+export async function analyzeVideo(file, { movement, onProgress, signal } = {}) {
   const landmarker = await getLandmarker(onProgress)
   onProgress?.('decoding')
 
@@ -205,7 +346,9 @@ export async function analyzeVideo(file, { onProgress, signal } = {}) {
       const result = landmarker.detectForVideo(canvas, Math.round(tSec * 1000))
       const lm = result?.landmarks?.[0]
       const m = lm ? measureFrame(lm) : null
-      frames.push({ t: +tSec.toFixed(2), measures: m })
+      // Landmarks are retained so a failing frame can be re-drawn with the
+      // skeleton and the offending angle marked on it.
+      frames.push({ t: +tSec.toFixed(2), measures: m, landmarks: lm || null })
       onProgress?.('analyzing', Math.min(1, tSec / duration))
     }
 
@@ -214,27 +357,60 @@ export async function analyzeVideo(file, { onProgress, signal } = {}) {
       throw new Error('לא זוהתה דמות בסרטון. ודא שכל הגוף בפריים והתאורה מספקת.')
     }
 
+    const summary = summarize(detected)
+
     const keyFrames = pickKeyFrames(frames)
     // Re-seek to each key moment and capture a still for the coaching prompt.
     const stills = []
     for (const kf of keyFrames) {
       await seek(video, kf.t)
       ctx.drawImage(video, 0, 0, w, h)
+      if (kf.landmarks) drawSkeleton(ctx, kf.landmarks, w, h)
       stills.push({
         label: kf.label,
         t: kf.t,
         measures: kf.measures,
-        dataUrl: canvas.toDataURL('image/jpeg', 0.7),
+        dataUrl: canvas.toDataURL('image/jpeg', 0.72),
       })
+    }
+
+    // Evaluate here rather than in the caller: annotating a fault means
+    // re-seeking the video, and the element is disposed when this returns.
+    const findings = movement ? evaluateMovement(movement, summary) : []
+    const byTime = new Map(frames.map(f => [f.t, f]))
+
+    for (const finding of findings) {
+      if (finding.ok) continue
+      const at = finding.atTime
+      if (at == null) continue
+      const frame = byTime.get(at)
+      if (!frame?.landmarks) continue
+
+      await seek(video, at)
+      ctx.drawImage(video, 0, 0, w, h)
+      drawSkeleton(ctx, frame.landmarks, w, h)
+      if (finding.measured) {
+        drawAngleFault(ctx, frame.landmarks, w, h, {
+          metric: finding.measured.metric,
+          measured: finding.measured.value,
+          limit: finding.measured.limit,
+          type: finding.measured.type,
+        })
+      }
+      finding.frame = {
+        t: at,
+        dataUrl: canvas.toDataURL('image/jpeg', 0.75),
+      }
     }
 
     return {
       frames,
       stills,
+      findings,
       duration: +duration.toFixed(2),
       coverage: +(detected.length / frames.length).toFixed(2),
       confidence: +(detected.reduce((s, f) => s + f.measures.confidence, 0) / detected.length).toFixed(3),
-      summary: summarize(detected),
+      summary,
     }
   } finally {
     URL.revokeObjectURL(url)
@@ -272,27 +448,41 @@ function pickKeyFrames(frames) {
 }
 
 // Reduce the whole clip to the numbers worth reporting.
+//
+// Each stat also records the timestamp where its extreme occurred, which is
+// what lets the report show the exact frame a fault happened on rather than a
+// generic still.
 function summarize(detected) {
   const pick = (key) => detected.map(f => f.measures[key]).filter(v => v != null)
   const stat = (key) => {
-    const vals = pick(key)
-    if (!vals.length) return null
+    const withVal = detected.filter(f => f.measures[key] != null)
+    if (!withVal.length) return null
+    let lo = withVal[0], hi = withVal[0]
+    for (const f of withVal) {
+      if (f.measures[key] < lo.measures[key]) lo = f
+      if (f.measures[key] > hi.measures[key]) hi = f
+    }
+    const vals = withVal.map(f => f.measures[key])
     return {
-      min: +Math.min(...vals).toFixed(1),
-      max: +Math.max(...vals).toFixed(1),
+      min: +lo.measures[key].toFixed(1),
+      max: +hi.measures[key].toFixed(1),
       avg: +(vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1),
+      minAt: lo.t,
+      maxAt: hi.t,
     }
   }
-  const hipBelow = pick('hipBelowKnee')
+  const depthStat = stat('hipBelowKnee')
   return {
     knee: stat('knee'),
     hip: stat('hip'),
     elbow: stat('elbow'),
     torsoLean: stat('torsoLean'),
     shinAngle: stat('shinAngle'),
-    // Positive max means the hip got below the knee at some point.
-    reachedDepth: hipBelow.length ? Math.max(...hipBelow) > 0 : null,
-    depthMargin: hipBelow.length ? +Math.max(...hipBelow).toFixed(3) : null,
+    // Positive max means the hip got below the knee at some point. maxAt is
+    // the deepest moment — the frame worth showing for a depth fault.
+    reachedDepth: depthStat ? depthStat.max > 0 : null,
+    depthMargin: depthStat ? depthStat.max : null,
+    depthAt: depthStat ? depthStat.maxAt : null,
   }
 }
 

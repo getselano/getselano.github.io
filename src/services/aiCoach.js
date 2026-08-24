@@ -214,8 +214,16 @@ export async function coachTechnique({ movement, summary, findings, stills = [],
     .map(([k, v]) => `${k}: מינימום ${v.min}° · מקסימום ${v.max}° · ממוצע ${v.avg}°`)
     .join('\n')
 
+  // Hand over the same gaps the report shows, so the coaching text cannot
+  // quote a different number than the image the user is looking at.
   const ruleResults = (findings || [])
-    .map(f => `- ${f.he}: ${f.ok ? 'תקין' : 'חריגה'}${f.measured ? ` (נמדד ${f.measured.value}°, סף ${f.measured.limit}°)` : ''}`)
+    .map(f => {
+      if (!f.measured) return `- ${f.he}: ${f.ok ? 'תקין' : 'חריגה'}`
+      const { value, targetHe, delta, jointHe } = f.measured
+      return f.ok
+        ? `- ${f.he}: תקין (${jointHe} ${value}°)`
+        : `- ${f.he}: חריגה — ${jointHe} נמדדה ${value}°, נדרש ${targetHe}, פער ${Math.abs(delta)}°`
+    })
     .join('\n')
 
   const prompt = `אתה מאמן הרמת משקולות וג׳ימנסטיקס. נתח את הביצוע של התרגיל "${movement.he}".
@@ -238,7 +246,7 @@ ${userContext.experience ? `רמת המתאמן: ${userContext.experience}` : ''
 תרגיל עזר: תרגיל אחד קונקרטי עם סטים וחזרות.
 
 כללים:
-- התבסס על המספרים שקיבלת. אל תמציא מדידות.
+- התבסס על המספרים שקיבלת. אל תמציא מדידות ואל תשנה אותן — המשתמש רואה בדיוק את אותם מספרים על התמונות.
 - אם התמונות לא ברורות או שהמדידות לא עקביות — אמור זאת במפורש במקום לנחש.
 - אל תאבחן פציעות ואל תיתן ייעוץ רפואי.
 - קצר. בלי הקדמות.`
