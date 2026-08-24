@@ -10,6 +10,7 @@ import { bloodMarkers, statusForValue } from '../../../data/bloodMarkers'
 import { extractBloodMarkersFromFile, aiEnabled } from '../../../services/aiCoach'
 import { todayKey } from '../../../utils/date'
 import { MealPlanner } from './MealPlanner'
+import { NutritionHistory } from './NutritionHistory'
 import { FoodPickerPro } from './FoodPickerPro'
 import { DishBuilder } from './DishBuilder'
 import { DisclaimerNote } from '../../../components/legal/DisclaimerNote'
@@ -26,6 +27,7 @@ export function Nutrition() {
  <DisclaimerNote kind={tab === 'blood' ? 'medical' : 'nutrition'} />
  <Tabs tabs={[
  { key:'today', label: isRTL ? 'היום' : 'Today'},
+ { key:'history', label: isRTL ? 'היסטוריה' : 'History'},
  { key:'planner', label: isRTL ? 'תכנון שבועי' : 'Weekly plan'},
  { key:'recipes', label: isRTL ? 'מרשמים' : 'Recipes'},
  { key:'calc', label: isRTL ? 'מחשבון' : 'Calculator'},
@@ -34,6 +36,7 @@ export function Nutrition() {
  { key:'blood', label: isRTL ? 'בדיקות דם' : 'Blood tests'},
  ]} active={tab} onChange={setTab} />
  {tab === 'today'&& <Today />}
+ {tab === 'history'&& <NutritionHistory />}
  {tab === 'planner'&& <MealPlanner />}
  {tab === 'recipes'&& <Recipes />}
  {tab === 'calc'&& <Calculator />}
