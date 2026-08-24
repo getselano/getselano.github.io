@@ -25,89 +25,95 @@ import { RunHub } from './RunHub'
 import { useI18n } from '../../../i18n/i18n'
 import { Kicker, SectionHead, Label, StatRow, Button as SButton, WeightDisplay } from '../../../design/components/primitives'
 
+// Landing: 3 big choice cards only — no plan card, no chips, no tabs.
+// Selecting one enters that module and shows its content with a back button.
+// History / Programs library / PDF import moved out to the "עוד" sidebar.
 export function Train() {
  const { state } = useApp()
- const [tab, setTab] = useState('bb')
+ const [choice, setChoice] = useState(null)  // null | 'bb' | 'crossfit' | 'running'
  const [showPlan, setShowPlan] = useState(false)
- const [showHistory, setShowHistory] = useState(false)
- const [showImport, setShowImport] = useState(false)
- const [showPrograms, setShowPrograms] = useState(false)
  const { t: tr } = useI18n()
  const hasPlan = !!state.plan
+
+ // Landing = only the 3 big choice cards
+ if (!choice) {
  return (
  <>
  <DisclaimerNote kind="training" />
+ <TrainChoiceLanding onPick={setChoice} />
+ </>
+ )
+ }
 
- {/* Active plan quick-access card (only when a plan exists) */}
- {hasPlan && !showPlan && (
+ // Inside a choice: back button + (optional) active-plan card + selected hub
+ return (
+ <>
+ <DisclaimerNote kind="training" />
+ <div style={{ marginBottom: 12 }}>
+ <button onClick={() => { setChoice(null); setShowPlan(false) }} style={{
+ background:'transparent', border:`1px solid ${t.color.border}`, color: t.color.text,
+ padding:'8px 14px', borderRadius: t.radius.sm, cursor:'pointer', fontFamily:'inherit', fontSize: 13,
+ }}>← חזרה לאימונים</button>
+ </div>
+
+ {/* Active-plan card only inside אימוני כוח */}
+ {choice === 'bb' && hasPlan && !showPlan && (
  <ActivePlanTopCard plan={state.plan} onOpen={() => setShowPlan(true)} />
  )}
 
- {/* My Plan takes over the screen when opened */}
  {showPlan ? (
- <>
- <div style={{ marginBottom: 12 }}>
- <button onClick={() => setShowPlan(false)} style={{
- background:'transparent', border:`1px solid ${t.color.border}`, color: t.color.text,
- padding:'8px 14px', borderRadius: t.radius.sm, cursor:'pointer', fontFamily:'inherit', fontSize: 13,
- }}>← חזרה לאימונים</button>
- </div>
  <MyPlan />
- </>
- ) : showHistory ? (
- <>
- <div style={{ marginBottom: 12 }}>
- <button onClick={() => setShowHistory(false)} style={{
- background:'transparent', border:`1px solid ${t.color.border}`, color: t.color.text,
- padding:'8px 14px', borderRadius: t.radius.sm, cursor:'pointer', fontFamily:'inherit', fontSize: 13,
- }}>← חזרה לאימונים</button>
- </div>
- <History />
- </>
- ) : showImport ? (
- <>
- <div style={{ marginBottom: 12 }}>
- <button onClick={() => setShowImport(false)} style={{
- background:'transparent', border:`1px solid ${t.color.border}`, color: t.color.text,
- padding:'8px 14px', borderRadius: t.radius.sm, cursor:'pointer', fontFamily:'inherit', fontSize: 13,
- }}>← חזרה לאימונים</button>
- </div>
- <PdfImporter />
- </>
- ) : showPrograms ? (
- <>
- <div style={{ marginBottom: 12 }}>
- <button onClick={() => setShowPrograms(false)} style={{
- background:'transparent', border:`1px solid ${t.color.border}`, color: t.color.text,
- padding:'8px 14px', borderRadius: t.radius.sm, cursor:'pointer', fontFamily:'inherit', fontSize: 13,
- }}>← חזרה לאימונים</button>
- </div>
- <ProgramsLibrary />
- </>
+ ) : choice === 'bb' ? (
+ <BodybuildingHub />
+ ) : choice === 'crossfit' ? (
+ <WodHub />
  ) : (
- <>
- <Tabs tabs={[
- { key:'bb', label: 'אימוני כוח' },
- { key:'crossfit', label: 'WOD' },
- { key:'running', label: 'ריצה' },
- ]} active={tab} onChange={setTab} />
-
- {/* Utility bar — history, programs, PDF import — small buttons */}
- <div style={{
- display:'flex', gap: 8, flexWrap:'wrap', marginBottom: 12,
- justifyContent:'flex-end',
- }}>
- <UtilChip onClick={() => setShowHistory(true)}>היסטוריה</UtilChip>
- <UtilChip onClick={() => setShowPrograms(true)}>תכניות מוכנות</UtilChip>
- <UtilChip onClick={() => setShowImport(true)}>ייבוא PDF</UtilChip>
- </div>
-
- {tab === 'bb' && <BodybuildingHub />}
- {tab === 'crossfit' && <WodHub />}
- {tab === 'running' && <RunHub />}
- </>
+ <RunHub />
  )}
  </>
+ )
+}
+
+// The 3 big cards on the Train landing.
+function TrainChoiceLanding({ onPick }) {
+ const choices = [
+ { key:'bb', title:'אימוני כוח', sub:'משקולות · Bodybuilding · תכניות אליפות' },
+ { key:'crossfit', title:'WOD', sub:'METCONS · ג׳ימנסטיקס · הנפות · HYROX' },
+ { key:'running', title:'ריצה', sub:'אימוני ריצה · תכניות שבועיות' },
+ ]
+ return (
+ <div style={{ display:'grid', gap: 12 }}>
+ <div style={{
+ fontFamily: t.font.family?.mono || 'Space Mono, monospace',
+ fontSize: 11, letterSpacing:'0.22em', color: t.color.textDim,
+ fontWeight: 700, textTransform:'uppercase', marginBottom: 2,
+ }}>בחר סוג אימון</div>
+ {choices.map(c => (
+ <button key={c.key} onClick={() => onPick(c.key)} style={{
+ width:'100%', textAlign:'right', fontFamily:'inherit', cursor:'pointer',
+ background: `linear-gradient(135deg, ${t.color.bgCard} 0%, ${t.color.bgElevated} 100%)`,
+ border: `1px solid ${t.color.border}`, borderRadius: t.radius.md,
+ padding:'22px 20px', color: t.color.text,
+ display:'flex', alignItems:'center', gap: 14,
+ transition: t.transition,
+ }}
+ onMouseEnter={e => {
+   e.currentTarget.style.borderColor = t.color.gold
+   e.currentTarget.style.transform = 'translateY(-1px)'
+ }}
+ onMouseLeave={e => {
+   e.currentTarget.style.borderColor = t.color.border
+   e.currentTarget.style.transform = 'none'
+ }}
+ >
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <div style={{ fontSize: 20, fontWeight: 800, color: t.color.gold, marginBottom: 4 }}>{c.title}</div>
+ <div style={{ fontSize: 13, color: t.color.textDim }}>{c.sub}</div>
+ </div>
+ <div style={{ fontSize: 26, color: t.color.gold }}>›</div>
+ </button>
+ ))}
+ </div>
  )
 }
 
@@ -139,19 +145,9 @@ function ActivePlanTopCard({ plan, onOpen }) {
  )
 }
 
-function UtilChip({ children, onClick }) {
- return (
- <button onClick={onClick} style={{
- padding:'6px 12px', background: t.color.bgSoft,
- border:`1px solid ${t.color.border}`, borderRadius: 999,
- color: t.color.textDim, cursor:'pointer', fontFamily:'inherit', fontSize: 12,
- transition: t.transition,
- }}
- onMouseEnter={e => { e.currentTarget.style.borderColor = t.color.gold; e.currentTarget.style.color = t.color.gold }}
- onMouseLeave={e => { e.currentTarget.style.borderColor = t.color.border; e.currentTarget.style.color = t.color.textDim }}
- >{children}</button>
- )
-}
+// Exposed so App.jsx can mount them as their own pages under the "עוד" menu.
+export function TrainHistory() { return <History /> }
+export function TrainProgramsLibrary() { return <ProgramsLibrary /> }
 
 function MyPlan() {
  const { state, logWorkout, setWeekDifficulty, startNewCycle, resumePlan, removeArchivedPlan, closePlan } = useApp()

@@ -23,6 +23,9 @@ export const TRANSLATIONS = {
     'nav.more':       'עוד',
     'nav.talk':       'דברו איתנו',
     'nav.profile':    'פרופיל',
+    'nav.train_history':  'היסטוריית אימונים',
+    'nav.train_programs': 'תכניות מוכנות',
+    'nav.train_import':   'ייבוא PDF',
 
     // Navigation — admin
     'nav.overview':          'סקירה',
@@ -193,6 +196,9 @@ export const TRANSLATIONS = {
     'nav.more':       'More',
     'nav.talk':       'Talk to Us',
     'nav.profile':    'Profile',
+    'nav.train_history':  'Workout History',
+    'nav.train_programs': 'Ready-made Programs',
+    'nav.train_import':   'Import PDF',
 
     // Navigation — admin
     'nav.overview':          'Overview',

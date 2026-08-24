@@ -18,6 +18,9 @@ const MEMBER_NAV_KEYS = [
 // Secondary items — reachable via the "עוד" (More) menu in top-bar/drawer.
 // Kept as valid routes so old deep-links still work.
 const MEMBER_MORE_KEYS = [
+ { key:'train-history', i18n:'nav.train_history' },
+ { key:'train-programs', i18n:'nav.train_programs' },
+ { key:'train-import', i18n:'nav.train_import' },
  { key:'mind', i18n:'nav.mind' },
  { key:'calendar', i18n:'nav.calendar' },
  { key:'ondemand', i18n:'nav.ondemand' },

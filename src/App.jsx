@@ -15,7 +15,8 @@ import { Onboarding } from './modules/member/onboarding/Onboarding'
 import { Home } from './modules/member/home/Home'
 import { Goals } from './modules/member/goals/Goals'
 import { Progress } from './modules/member/progress/Progress'
-import { Train } from './modules/member/train/Train'
+import { Train, TrainHistory, TrainProgramsLibrary } from './modules/member/train/Train'
+import { PdfImporter } from './modules/member/train/PdfImporter'
 import { Rehab } from './modules/member/rehab/Rehab'
 import { Nutrition } from './modules/member/nutrition/Nutrition'
 import { Mind } from './modules/member/mind/Mind'
@@ -126,6 +127,9 @@ function AppRouter() {
  goals: <Goals go={setPage} />,
  progress: <Progress />,
  train: <Train />,
+ 'train-history': <TrainHistory />,
+ 'train-programs': <TrainProgramsLibrary />,
+ 'train-import': <PdfImporter />,
  rehab: <Rehab />,
  nutrition: <Nutrition />,
  mind: <Mind />,
