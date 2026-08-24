@@ -11,7 +11,7 @@
 // !!! IMPORTANT !!!
 // Bump CACHE_NAME on every deploy that could break older cached assets.
 // The activate handler wipes every cache whose name != current one.
-const CACHE_NAME = 'selano-v5-2026-08-16-b'
+const CACHE_NAME = 'selano-v6-2026-08-24'
 
 const BASE = new URL(self.registration?.scope || './', self.location.href).pathname
 const OFFLINE_FALLBACK = BASE
@@ -66,6 +66,26 @@ self.addEventListener('fetch', (event) => {
           return res
         })
         .catch(() => caches.match(request).then(m => m || caches.match(OFFLINE_FALLBACK)))
+    )
+    return
+  }
+
+  // Immutable large assets (the pose model) — cache-first, never revalidate.
+  // The model is ~5.8 MB and its contents never change for a given filename,
+  // so stale-while-revalidate would re-download it in the background on every
+  // single technique analysis. Cache-first means one download, ever.
+  if (url.pathname.includes('/mediapipe/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached
+        return fetch(request).then((res) => {
+          if (res && res.ok) {
+            const clone = res.clone()
+            caches.open(CACHE_NAME).then(c => c.put(request, clone)).catch(() => {})
+          }
+          return res
+        })
+      })
     )
     return
   }

@@ -14,6 +14,7 @@ import {
   HYROX_FOCUSES, HYROX_PROGRAMS, generateHyroxWod, hyroxProgramToPlan,
 } from '../../../../data/disciplines/hyrox'
 import { WOD_LEVELS, levelFromProfile } from '../../../../data/disciplines/levels'
+import { TechniqueAnalyzer } from '../technique/TechniqueAnalyzer'
 
 // The WOD tab shell: 4 discipline chips at top, each routes to its own
 // generator UI. CrossFit keeps the existing full-featured generator.
@@ -28,9 +29,22 @@ const DISCIPLINES = [
 
 export function WodHub() {
   const [discipline, setDiscipline] = useState('crossfit')
+  // Technique review is available for the two disciplines whose faults are
+  // actually measurable from a side-on clip.
+  const [techniqueFor, setTechniqueFor] = useState(null)
+
+  if (techniqueFor) {
+    return <TechniqueAnalyzer discipline={techniqueFor} onClose={() => setTechniqueFor(null)} />
+  }
+
+  const supportsTechnique = discipline === 'gymnastics' || discipline === 'weightlifting'
+
   return (
     <div>
       <DisciplineStrip active={discipline} onChange={setDiscipline} />
+      {supportsTechnique && (
+        <TechniqueCta discipline={discipline} onOpen={() => setTechniqueFor(discipline)} />
+      )}
       {discipline === 'crossfit' && <CrossFitWod />}
       {discipline === 'gymnastics' && (
         <SimpleDiscipline
@@ -60,6 +74,33 @@ export function WodHub() {
         />
       )}
     </div>
+  )
+}
+
+// Entry point into the on-device technique review.
+function TechniqueCta({ discipline, onOpen }) {
+  const label = discipline === 'weightlifting' ? 'הנפות' : 'ג׳ימנסטיקס'
+  return (
+    <button onClick={onOpen} style={{
+      width:'100%', textAlign:'start', fontFamily:'inherit', cursor:'pointer',
+      background: `linear-gradient(135deg, ${t.color.goldGlow} 0%, ${t.color.bgElevated} 65%)`,
+      border: `1px solid ${t.color.gold}`, borderRadius: t.radius.md,
+      padding:'14px 16px', marginBottom: 14, color: t.color.text,
+      display:'flex', alignItems:'center', gap: 12,
+    }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+        background: t.color.gold, color:'#0d0d14',
+        display:'grid', placeItems:'center', fontWeight: 900, fontSize: 18,
+      }}>°</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: t.color.gold }}>בדוק את הטכניקה שלך</div>
+        <div style={{ fontSize: 12, color: t.color.textDim, marginTop: 2 }}>
+          צלם סט של {label} — נמדוד זוויות מפרקים ונחזיר תיקונים
+        </div>
+      </div>
+      <span style={{ fontSize: 22, color: t.color.gold }}>›</span>
+    </button>
   )
 }
 

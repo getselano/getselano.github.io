@@ -199,6 +199,77 @@ ${markerList.map(m => `- ${m.id}: ${m.aliases.join(' / ')}`).join('\n')}
 }
 
 // Detect if a question is emotional/personal - should route to mental coach
+// ─── TECHNIQUE COACHING ─────────────────────────────────────────────
+// Turns measured joint angles plus a few key stills into coaching language.
+//
+// The clip itself is never uploaded. MediaPipe has already run on-device and
+// produced the numbers; we send 2-4 JPEG frames and the angle table. A 15s
+// clip is roughly 87,000 tokens of video, versus about 2,000 this way — which
+// is what keeps this inside the free tier instead of costing per review.
+export async function coachTechnique({ movement, summary, findings, stills = [], userContext = {} }) {
+  if (!aiEnabled) return null
+
+  const measured = Object.entries(summary || {})
+    .filter(([, v]) => v && typeof v === 'object' && v.min != null)
+    .map(([k, v]) => `${k}: מינימום ${v.min}° · מקסימום ${v.max}° · ממוצע ${v.avg}°`)
+    .join('\n')
+
+  const ruleResults = (findings || [])
+    .map(f => `- ${f.he}: ${f.ok ? 'תקין' : 'חריגה'}${f.measured ? ` (נמדד ${f.measured.value}°, סף ${f.measured.limit}°)` : ''}`)
+    .join('\n')
+
+  const prompt = `אתה מאמן הרמת משקולות וג׳ימנסטיקס. נתח את הביצוע של התרגיל "${movement.he}".
+
+מדידות זוויות מפרקים שחושבו על המכשיר מתוך הסרטון:
+${measured || 'לא נמדדו זוויות'}
+${summary?.reachedDepth != null ? `\nעומק: ${summary.reachedDepth ? 'הירך ירדה מתחת לקו הברך' : 'הירך לא ירדה מתחת לקו הברך'}` : ''}
+
+בדיקות אוטומטיות:
+${ruleResults || 'אין'}
+
+${userContext.experience ? `רמת המתאמן: ${userContext.experience}` : ''}
+
+מצורפות תמונות מנקודות המפתח בתנועה.
+
+כתוב בעברית, בגוף שני, בפורמט הזה בדיוק:
+עיקר הדברים: משפט אחד.
+מה עובד טוב: 1-2 נקודות.
+מה לתקן: עד 3 נקודות, כל אחת עם תיקון מעשי אחד.
+תרגיל עזר: תרגיל אחד קונקרטי עם סטים וחזרות.
+
+כללים:
+- התבסס על המספרים שקיבלת. אל תמציא מדידות.
+- אם התמונות לא ברורות או שהמדידות לא עקביות — אמור זאת במפורש במקום לנחש.
+- אל תאבחן פציעות ואל תיתן ייעוץ רפואי.
+- קצר. בלי הקדמות.`
+
+  const parts = [{ text: prompt }]
+  for (const still of stills.slice(0, 4)) {
+    const base64 = String(still.dataUrl || '').split(',')[1]
+    if (base64) parts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } })
+  }
+
+  try {
+    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts }],
+        generationConfig: { temperature: 0.4, maxOutputTokens: 700 },
+      }),
+    })
+    if (!res.ok) {
+      console.warn('[aiCoach] technique request failed:', res.status)
+      return null
+    }
+    const data = await res.json()
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null
+  } catch (err) {
+    console.warn('[aiCoach] technique request threw:', err?.message || err)
+    return null
+  }
+}
+
 export function isMentalQuestion(text) {
   const mentalKeywords = [
     'מרגיש', 'לחוץ', 'עצוב', 'חרד', 'מפחד', 'כועס', 'מדוכא', 'עייף נפשית',
