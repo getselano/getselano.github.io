@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { t } from '../../../../theme/tokens'
 import { useApp } from '../../../../store/AppStore'
 import { Card, Button, Badge, SectionHeader } from '../../../../components/ui/UI'
@@ -6,6 +6,10 @@ import { DisclaimerNote } from '../../../../components/legal/DisclaimerNote'
 import { groupedMovements, searchMovements } from '../../../../data/liftCriteria'
 import { analyzeVideo, POSE_LIMITS } from '../../../../services/poseAnalysis'
 import { coachTechnique, aiEnabled } from '../../../../services/aiCoach'
+import {
+  saveClip, attachCoaching, listClips, getClip, deleteClip, deleteAllClips,
+  purgeExpired, archiveStats, formatBytes, daysLeft, RETENTION_DAYS,
+} from '../../../../services/techniqueArchive'
 
 // Technique review. Three taps to the analysis: pick the movement, hand over
 // a clip, read the report.
@@ -28,11 +32,36 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
   const [coaching, setCoaching] = useState(null)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
+  const [view, setView] = useState('new')      // new | archive
+  const [clips, setClips] = useState([])
+  const [stats, setStats] = useState({ count: 0, bytes: 0 })
+  const [purged, setPurged] = useState(0)
+  const [openClip, setOpenClip] = useState(null)
+  const savedIdRef = useRef(null)
   // Two separate inputs: `capture` forces the camera on mobile and skips the
   // gallery entirely, so picking an existing clip needs its own input without it.
   const cameraRef = useRef(null)
   const galleryRef = useRef(null)
   const abortRef = useRef(null)
+
+  // Expired clips go on open, so storage never grows unattended and the user
+  // is told what was removed rather than finding clips silently gone.
+  const refreshArchive = async () => {
+    const [list, st] = await Promise.all([listClips(), archiveStats()])
+    setClips(list)
+    setStats(st)
+  }
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const removed = await purgeExpired()
+      if (!alive) return
+      if (removed) setPurged(removed)
+      await refreshArchive()
+    })()
+    return () => { alive = false }
+  }, [])
 
   const reset = () => {
     abortRef.current?.abort()
@@ -72,6 +101,20 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
       setResult(analysis)
       setPhase('done')
 
+      // Archive locally so the report survives a refresh. Failure here is
+      // logged inside the service and must not affect the visible result.
+      savedIdRef.current = await saveClip({
+        videoBlob: file,
+        movement,
+        summary: analysis.summary,
+        findings,
+        stills: analysis.stills,
+        duration: analysis.duration,
+        coverage: analysis.coverage,
+        confidence: analysis.confidence,
+      })
+      refreshArchive()
+
       // Coaching text is a bonus layer — the measured report already stands
       // on its own, so a failure here must not fail the analysis.
       if (aiEnabled) {
@@ -84,6 +127,9 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
           userContext: { experience: state.profile?.experience },
         })
         if (!ctrl.signal.aborted) setCoaching(text)
+        if (text && savedIdRef.current) {
+          attachCoaching(savedIdRef.current, text).then(refreshArchive)
+        }
         setStage('')
       }
     } catch (err) {
@@ -91,6 +137,35 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
       setError(err?.message || 'הניתוח נכשל. נסה שוב עם קליפ אחר.')
       setPhase('error')
     }
+  }
+
+  // ── A saved clip, reopened ──
+  if (openClip) {
+    return (
+      <SavedClipView
+        clip={openClip}
+        onBack={() => setOpenClip(null)}
+        onDeleted={async (id) => {
+          await deleteClip(id)
+          setOpenClip(null)
+          refreshArchive()
+        }}
+      />
+    )
+  }
+
+  // ── The archive ──
+  if (view === 'archive' && !movement) {
+    return (
+      <ArchiveView
+        clips={clips}
+        stats={stats}
+        onBack={() => setView('new')}
+        onOpen={async (id) => setOpenClip(await getClip(id))}
+        onDelete={async (id) => { await deleteClip(id); refreshArchive() }}
+        onClearAll={async () => { await deleteAllClips(); refreshArchive() }}
+      />
+    )
   }
 
   // ── Step 1: pick the movement ──
@@ -103,6 +178,31 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
           title="בדיקת טכניקה"
           subtitle="בחר תרגיל, צלם או העלה קליפ, וקבל מדידת זוויות ותיקונים"
         />
+
+        {purged > 0 && (
+          <Card style={{ marginBottom: 12, background: `${t.color.info}0d`, borderColor: t.color.info }}>
+            <div style={{ fontSize: 12, color: t.color.textDim, lineHeight: 1.7 }}>
+              {purged} סרטונים ישנים נמחקו אוטומטית (מעל {RETENTION_DAYS} ימים).
+            </div>
+          </Card>
+        )}
+
+        {clips.length > 0 && (
+          <button onClick={() => setView('archive')} style={{
+            width:'100%', textAlign:'start', fontFamily:'inherit', cursor:'pointer',
+            background: t.color.bgSoft, border:`1px solid ${t.color.border}`,
+            borderRadius: t.radius.md, padding:'13px 16px', color: t.color.text,
+            display:'flex', alignItems:'center', gap: 12, marginBottom: 16,
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>הסרטונים שלי</div>
+              <div style={{ fontSize: 11, color: t.color.textDim, marginTop: 2 }}>
+                {stats.count} שמורים · {formatBytes(stats.bytes)}
+              </div>
+            </div>
+            <span style={{ fontSize: 20, color: t.color.gold }}>›</span>
+          </button>
+        )}
         <MovementSearch value={query} onChange={setQuery} />
 
         {/* A query flattens the list — groups only help when browsing */}
@@ -213,6 +313,188 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
 // Typing beats scrolling once the list passes ~20 entries. Matches Hebrew and
 // English names plus the internal id, so "power clean", "פאוור" and
 // "power_clean" all land on the same movement.
+// ─── Archive ──────────────────────────────────────────────────────
+
+function ArchiveView({ clips, stats, onBack, onOpen, onDelete, onClearAll }) {
+  return (
+    <div>
+      <BackRow onClose={onBack} label="← חזרה לבדיקה חדשה" />
+      <SectionHeader
+        title="הסרטונים שלי"
+        subtitle={`${stats.count} סרטונים · ${formatBytes(stats.bytes)} על המכשיר`}
+      />
+
+      <Card style={{ marginBottom: 14, background: `${t.color.info}0d`, borderColor: t.color.info }}>
+        <div style={{ fontSize: 12, color: t.color.textDim, lineHeight: 1.7 }}>
+          הסרטונים נשמרים על המכשיר שלך בלבד — לא מועלים לשום שרת.
+          כל סרטון נמחק אוטומטית אחרי {RETENTION_DAYS} ימים כדי לא לתפוס מקום.
+        </div>
+      </Card>
+
+      {!clips.length ? (
+        <Card>
+          <div style={{ fontSize: 13, color: t.color.textDim, lineHeight: 1.7 }}>
+            אין סרטונים שמורים. כל בדיקה שתריץ תישמר כאן אוטומטית.
+          </div>
+        </Card>
+      ) : (
+        <>
+          <div style={{ display:'grid', gap: 10 }}>
+            {clips.map(c => <ClipRow key={c.id} clip={c} onOpen={onOpen} onDelete={onDelete} />)}
+          </div>
+
+          <button
+            onClick={() => {
+              if (confirm(`למחוק את כל ${clips.length} הסרטונים? הפעולה בלתי הפיכה.`)) onClearAll()
+            }}
+            style={{
+              width:'100%', marginTop: 16, padding: 12, cursor:'pointer', fontFamily:'inherit',
+              background:'transparent', border:`1px solid ${t.color.danger}`,
+              color: t.color.danger, borderRadius: t.radius.sm, fontSize: 13, fontWeight: 700,
+            }}
+          >מחק את כל הסרטונים</button>
+        </>
+      )}
+    </div>
+  )
+}
+
+function ClipRow({ clip: c, onOpen, onDelete }) {
+  const left = daysLeft(c.createdAt)
+  const problems = (c.findings || []).filter(f => !f.ok).length
+  const thumb = c.findings?.find(f => f.frame?.dataUrl)?.frame?.dataUrl
+    || c.stills?.[0]?.dataUrl
+
+  return (
+    <div style={{
+      display:'flex', gap: 12, alignItems:'center', padding: 10,
+      background: t.color.bgSoft, border:`1px solid ${t.color.border}`,
+      borderRadius: t.radius.md,
+    }}>
+      <button onClick={() => onOpen(c.id)} style={{
+        flex: 1, minWidth: 0, display:'flex', gap: 12, alignItems:'center',
+        background:'transparent', border:'none', color: t.color.text,
+        cursor:'pointer', fontFamily:'inherit', textAlign:'start', padding: 0,
+      }}>
+        {thumb && (
+          <img src={thumb} alt="" style={{
+            width: 64, height: 64, objectFit:'cover', borderRadius: t.radius.sm, flexShrink: 0,
+          }} />
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: t.color.gold }}>{c.movementHe}</div>
+          <div style={{ fontSize: 11, color: t.color.textDim, marginTop: 2 }}>
+            {new Date(c.createdAt).toLocaleDateString('he-IL')} ·{' '}
+            {new Date(c.createdAt).toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' })}
+            {c.videoSize ? ` · ${formatBytes(c.videoSize)}` : ''}
+          </div>
+          <div style={{ display:'flex', gap: 6, marginTop: 5, flexWrap:'wrap' }}>
+            <Badge color={problems ? t.color.warning : t.color.success}>
+              {problems ? `${problems} לתיקון` : 'תקין'}
+            </Badge>
+            <Badge color={left <= 2 ? t.color.danger : t.color.textDim}>
+              {left === 0 ? 'נמחק היום' : `עוד ${left} ימים`}
+            </Badge>
+          </div>
+        </div>
+      </button>
+
+      <button
+        onClick={() => { if (confirm(`למחוק את הסרטון של ${c.movementHe}?`)) onDelete(c.id) }}
+        aria-label="מחק סרטון"
+        style={{
+          background:'transparent', border:`1px solid ${t.color.border}`,
+          color: t.color.danger, cursor:'pointer', padding:'8px 10px',
+          borderRadius: t.radius.sm, fontFamily:'inherit', fontSize: 12, fontWeight: 700,
+          flexShrink: 0,
+        }}
+      >מחק</button>
+    </div>
+  )
+}
+
+// A reopened clip: the video itself plus the report exactly as it was, rebuilt
+// from what was stored rather than by re-running pose detection.
+function SavedClipView({ clip: c, onBack, onDeleted }) {
+  const [videoUrl, setVideoUrl] = useState(null)
+
+  useEffect(() => {
+    if (!c.videoBlob) return
+    const url = URL.createObjectURL(c.videoBlob)
+    setVideoUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [c.videoBlob])
+
+  const problems = (c.findings || []).filter(f => !f.ok)
+  const good = (c.findings || []).filter(f => f.ok)
+  const left = daysLeft(c.createdAt)
+
+  return (
+    <div>
+      <BackRow onClose={onBack} label="← חזרה לסרטונים" />
+      <SectionHeader
+        title={c.movementHe}
+        subtitle={`${new Date(c.createdAt).toLocaleDateString('he-IL')} · ${c.duration}ש׳ · נמחק בעוד ${left} ימים`}
+      />
+
+      <div style={{ display:'grid', gap: 14 }}>
+        {videoUrl && (
+          <Card style={{ padding: 0, overflow:'hidden' }}>
+            <video
+              src={videoUrl}
+              controls
+              playsInline
+              style={{ width:'100%', display:'block', background:'#000' }}
+            />
+          </Card>
+        )}
+
+        {problems.length > 0 && (
+          <div>
+            <SectionHeader title={`${problems.length} תיקונים`} />
+            <div style={{ display:'grid', gap: 14 }}>
+              {problems.map(f => <CorrectionCard key={f.id} finding={f} />)}
+            </div>
+          </div>
+        )}
+
+        {good.length > 0 && (
+          <Card>
+            <SectionHeader title="מה היה תקין" action={<Badge color={t.color.success}>{good.length}</Badge>} />
+            <div style={{ display:'grid', gap: 8 }}>
+              {good.map(f => (
+                <div key={f.id} style={{
+                  padding: 10, background: t.color.bgSoft, borderRadius: t.radius.sm,
+                  borderInlineStart:`3px solid ${t.color.success}`,
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{f.he}</div>
+                  <div style={{ fontSize: 12, color: t.color.textDim, marginTop: 3 }}>{f.message}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {c.coaching && (
+          <Card style={{ borderColor: t.color.gold }}>
+            <SectionHeader title="הערות מאמן" />
+            <div style={{ fontSize: 13, lineHeight: 1.8, whiteSpace:'pre-wrap' }}>{c.coaching}</div>
+          </Card>
+        )}
+
+        <button
+          onClick={() => { if (confirm('למחוק את הסרטון הזה?')) onDeleted(c.id) }}
+          style={{
+            width:'100%', padding: 12, cursor:'pointer', fontFamily:'inherit',
+            background:'transparent', border:`1px solid ${t.color.danger}`,
+            color: t.color.danger, borderRadius: t.radius.sm, fontSize: 13, fontWeight: 700,
+          }}
+        >מחק סרטון</button>
+      </div>
+    </div>
+  )
+}
+
 // One fault, shown on the frame where it actually happened. The overlay marks
 // the joint and prints measured against required; the text below spells out
 // the gap in words and what to do about it.
