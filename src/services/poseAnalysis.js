@@ -58,6 +58,53 @@ function withTimeout(promise, ms, reason) {
 
 let landmarkerPromise = null
 
+// MediaPipe's VIDEO mode requires strictly increasing timestamps for the
+// lifetime of the landmarker *instance*, not per clip. The instance is shared
+// across analyses (it costs a 5.8MB model load to build), so a second clip
+// starting again at 0 makes the graph reject the frame outright:
+//
+//   "Packet timestamp mismatch ... expected 1 but received 0"
+//
+// Each analysis therefore gets a base above every timestamp used so far, which
+// keeps real frame deltas inside a clip while staying monotonic across clips.
+let lastVideoTimestamp = -1
+const CLIP_TIMESTAMP_GAP_MS = 1000
+
+function nextTimestampBase() {
+  return lastVideoTimestamp + CLIP_TIMESTAMP_GAP_MS
+}
+
+// Feeds one frame, guaranteeing the timestamp is past everything before it.
+function detectFrame(landmarker, canvas, desiredMs) {
+  const ts = Math.max(desiredMs, lastVideoTimestamp + 1)
+  lastVideoTimestamp = ts
+  return landmarker.detectForVideo(canvas, ts)
+}
+
+// A graph that has failed stays failed, and the landmarker is cached, so
+// without this every retry reproduces the same error and "try again" is a
+// dead button. Dropping the instance makes the next attempt rebuild it.
+function discardLandmarker() {
+  const p = landmarkerPromise
+  landmarkerPromise = null
+  lastVideoTimestamp = -1
+  Promise.resolve(p).then(l => { try { l?.close?.() } catch { /* already gone */ } }, () => {})
+}
+
+// MediaPipe reports failures as a wall of C++ trace. Show the user something
+// actionable and keep the raw text in the console for us.
+function describeGraphError(err) {
+  const raw = err?.message || String(err)
+  console.error('[poseAnalysis] graph error:', raw)
+  if (/timestamp/i.test(raw)) {
+    return 'מנוע הזיהוי יצא מסנכרון בין שתי בדיקות. אופס את עצמו — לחץ "נסה שוב".'
+  }
+  if (/memory|alloc|OOM/i.test(raw)) {
+    return 'נגמר הזיכרון באמצע הניתוח. סגור לשוניות אחרות ונסה קליפ קצר יותר.'
+  }
+  return 'הניתוח נכשל באמצע. לחץ "נסה שוב" — אם זה חוזר, הרץ "בדיקת תקינות".'
+}
+
 // Load once per page. The model is ~5.8 MB, so the first analysis pays a
 // download and every later one is instant from HTTP cache.
 async function getLandmarker(onProgress) {
@@ -371,6 +418,9 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
     const step = 1 / SAMPLE_FPS
     const frames = []
     let blankFrames = 0
+    // Claimed once per clip, before any frame is fed, so this analysis never
+    // reuses a timestamp an earlier one already sent to the shared graph.
+    const tsBase = nextTimestampBase()
     onProgress?.('analyzing')
 
     for (let tSec = 0; tSec < duration; tSec += step) {
@@ -389,7 +439,15 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
         )
       }
       // Timestamps must increase monotonically in VIDEO mode.
-      const result = landmarker.detectForVideo(canvas, Math.round(tSec * 1000))
+      let result
+      try {
+        result = detectFrame(landmarker, canvas, tsBase + Math.round(tSec * 1000))
+      } catch (err) {
+        // The graph is unusable from here on, so drop it rather than letting
+        // the rest of the loop — and every later attempt — fail the same way.
+        discardLandmarker()
+        throw new Error(describeGraphError(err))
+      }
       const lm = result?.landmarks?.[0]
       const m = lm ? measureFrame(lm) : null
       // Landmarks are retained so a failing frame can be re-drawn with the
