@@ -4,7 +4,7 @@ import { useApp } from '../../../store/AppStore'
 import { Card, Button, Input, Select, Badge, SectionHeader, Tabs, Modal, EmptyState, ProgressBar } from '../../../components/ui/UI'
 import { DonutSegments } from '../../../components/charts/Charts'
 import { nutritionTargets, activityFactors, goalAdjustments, dietTemplates, bmi, waterLiters } from '../../../utils/calc'
-import { foods } from '../../../data/foods'
+import { foods, MICRO_KEYS } from '../../../data/foods'
 import { dietInfo } from '../../../data/dietTemplates'
 import { bloodMarkers, statusForValue } from '../../../data/bloodMarkers'
 import { extractBloodMarkersFromFile, aiEnabled } from '../../../services/aiCoach'
@@ -44,6 +44,23 @@ export function Nutrition() {
  )
 }
 
+// Compact micronutrient readout for the Today card.
+function MicroTile({ label, value, unit, color }) {
+ return (
+ <div style={{ padding:'6px 4px', background: t.color.bgSoft, borderRadius: t.radius.sm, textAlign:'center' }}>
+ <div style={{ fontSize: t.font.sm, fontWeight: 800, color: color || t.color.text }}>{value}<span style={{ fontSize: 9, fontWeight: 500 }}>{unit}</span></div>
+ <div style={{ fontSize: 9, color: t.color.textMuted }}>{label}</div>
+ </div>
+ )
+}
+
+// A logged item is measured in grams (a food) or servings (a recipe).
+function amountLabel(m, isRTL) {
+ if (m.grams != null && m.grams !== '') return `${m.grams}${isRTL ? 'ג׳' : 'g'}`
+ if (m.servings != null) return `${m.servings} ${isRTL ? 'מנות' : 'servings'}`
+ return ''
+}
+
 function Today() {
  const { state, logMeal, removeMeal } = useApp()
  const { isRTL } = useI18n()
@@ -71,7 +88,14 @@ function Today() {
  p: acc.p + (m.p||0),
  c: acc.c + (m.c||0),
  f: acc.f + (m.f||0),
- }), { kcal:0, p:0, c:0, f:0 })
+ fiber: acc.fiber + (m.fiber||0),
+ sugar: acc.sugar + (m.sugar||0),
+ satFat: acc.satFat + (m.satFat||0),
+ sodium: acc.sodium + (m.sodium||0),
+ }), { kcal:0, p:0, c:0, f:0, fiber:0, sugar:0, satFat:0, sodium:0 })
+
+ // Only worth showing once at least one logged item carried micro data.
+ const hasMicros = meals.some(m => MICRO_KEYS.some(k => m[k] != null))
 
  const _t = nutritionTargets(state.profile)
  const kcalTarget = _t.kcal
@@ -96,6 +120,26 @@ function Today() {
  <MacroRow label={isRTL ? 'חלבון' : 'Protein'} value={Math.round(totals.p)} target={target.protein} unit={isRTL ? 'ג׳' : 'g'} color={t.color.info} />
  <MacroRow label={isRTL ? 'פחמימות' : 'Carbs'} value={Math.round(totals.c)} target={target.carbs} unit={isRTL ? 'ג׳' : 'g'} color={t.color.gold} />
  <MacroRow label={isRTL ? 'שומן' : 'Fat'} value={Math.round(totals.f)} target={target.fat} unit={isRTL ? 'ג׳' : 'g'} color={t.color.warning} />
+ {hasMicros && (
+ <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${t.color.border}` }}>
+ <div style={{
+ fontFamily: t.font.family.mono, fontSize: 9, letterSpacing:'0.2em',
+ color: t.color.silver2, fontWeight: 700, textTransform:'uppercase', marginBottom: 8,
+ }}>{isRTL ? 'ערכים נוספים היום' : 'Also today'}</div>
+ <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 6 }}>
+ <MicroTile label={isRTL ? 'סיבים' : 'Fiber'} value={Math.round(totals.fiber)} unit={isRTL ? 'ג׳' : 'g'} color={t.color.success} />
+ <MicroTile label={isRTL ? 'סוכר' : 'Sugar'} value={Math.round(totals.sugar)} unit={isRTL ? 'ג׳' : 'g'} />
+ <MicroTile label={isRTL ? 'רווי' : 'Sat fat'} value={Math.round(totals.satFat)} unit={isRTL ? 'ג׳' : 'g'} />
+ <MicroTile label={isRTL ? 'נתרן' : 'Sodium'} value={Math.round(totals.sodium)} unit={isRTL ? 'מ״ג' : 'mg'} />
+ </div>
+ <div style={{ fontSize: 10, color: t.color.textMuted, marginTop: 6 }}>
+ {isRTL
+ ? 'מסוכם רק ממזונות שנרשמו עם ערכים אלה — פריטים בלי נתונים לא נספרים.'
+ : 'Totalled only from items logged with these values — entries without data are not counted.'}
+ </div>
+ </div>
+ )}
+
  <div style={{ marginTop: 16, display:'flex', gap: 12, alignItems:'center', fontSize: t.font.sm, color: t.color.textDim }}>
  {isRTL ? 'מים מומלץ' : 'Recommended water'}: {waterLiters(state.profile.weightKg, state.profile.activity)} {isRTL ? 'ל׳' : 'L'} · {isRTL ? 'תזונה' : 'Diet'}: {diet.label}
  </div>
@@ -114,7 +158,7 @@ function Today() {
  <div className="hfos-hscroll" style={{ display:'flex', gap: 8, overflowX:'auto', paddingBottom: 6, marginTop: 4 }}>
  {recentMeals.map((m, i) => (
  <button key={i}
- onClick={() => logMeal({ foodId: m.foodId, name: m.name, grams: m.grams, kcal: m.kcal, p: m.p, c: m.c, f: m.f })}
+ onClick={() => { const { count, ...entry } = m; logMeal(entry) }}
  style={{
  flexShrink: 0, minWidth: 160, padding: 12,
  background: t.color.bgSoft, border: `1px solid ${t.color.border}`,
@@ -129,7 +173,7 @@ function Today() {
  <div style={{ fontWeight: 700, fontSize: t.font.sm, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth: 130 }}>{m.name}</div>
  {m.count > 1 && <span style={{ fontSize: 10, color: t.color.gold, fontWeight: 700 }}>{m.count}×</span>}
  </div>
- <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>{m.grams}{isRTL ? 'ג׳' : 'g'} · {Math.round(m.kcal)} {isRTL ? 'קק״ל' : 'kcal'}</div>
+ <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>{amountLabel(m, isRTL)}{amountLabel(m, isRTL) ? ' · ' : ''}{Math.round(m.kcal)} {isRTL ? 'קק״ל' : 'kcal'}</div>
  <div style={{ marginTop: 6, fontSize: t.font.xs, color: t.color.gold, fontWeight: 700 }}>+ {isRTL ? 'הוסף שוב' : 'Add again'}</div>
  </button>
  ))}
@@ -152,7 +196,7 @@ function Today() {
  {meals.map((m, i) => (
  <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding: 12, background: t.color.bgSoft, borderRadius: t.radius.sm }}>
  <div style={{ minWidth: 0, flex: 1 }}>
- <div style={{ fontWeight: 600 }}>{m.name} <span style={{ color: t.color.textDim, fontWeight: 400 }}>· {m.grams}{isRTL ? 'ג׳' : 'g'}</span></div>
+ <div style={{ fontWeight: 600 }}>{m.name}{amountLabel(m, isRTL) && <span style={{ color: t.color.textDim, fontWeight: 400 }}> · {amountLabel(m, isRTL)}</span>}</div>
  <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>
  {Math.round(m.kcal)} {isRTL ? 'קק״ל' : 'kcal'} · {Math.round(m.p)}{isRTL ? 'ח׳' : 'P'} · {Math.round(m.c)}{isRTL ? 'פ׳' : 'C'} · {Math.round(m.f)}{isRTL ? 'ש׳' : 'F'}
  </div>
@@ -486,8 +530,44 @@ function Recipes() {
  )
 }
 
+// Small +/- stepper used by the recipe portion picker.
+function StepBtn({ label, onClick }) {
+ return (
+ <button onClick={onClick} style={{
+ width: 32, height: 32, borderRadius: t.radius.sm,
+ background: t.color.bgCard, border: `1px solid ${t.color.border}`,
+ color: t.color.text, cursor:'pointer', fontFamily:'inherit',
+ fontSize: 18, fontWeight: 700, lineHeight: 1, padding: 0,
+ }}>{label}</button>
+ )
+}
+
 function RecipeContent({ recipe }) {
  const { isRTL } = useI18n()
+ const { logMeal } = useApp()
+ // Recipe macros are per the whole recipe; servings lets the user log the
+ // portion they actually ate rather than the whole pot.
+ const [portions, setPortions] = useState(1)
+ const [logged, setLogged] = useState(false)
+ const totalServings = recipe.servings || 1
+ const share = portions / totalServings
+
+ const addToToday = () => {
+ logMeal({
+ foodId: `recipe_${recipe.id}`,
+ name: portions === totalServings ? recipe.name : `${recipe.name} (${portions}/${totalServings})`,
+ grams: null,                 // a recipe portion isn't a gram weight
+ servings: portions,
+ kcal: Math.round(recipe.kcal * share),
+ p: Math.round(recipe.p * share),
+ c: Math.round(recipe.c * share),
+ f: Math.round(recipe.f * share),
+ fromRecipe: recipe.id,
+ })
+ setLogged(true)
+ setTimeout(() => setLogged(false), 2500)
+ }
+
  return (
  <>
  <RecipeThumb recipe={recipe} aspectRatio="16 / 9" style={{ marginBottom: 14 }} />
@@ -496,13 +576,46 @@ function RecipeContent({ recipe }) {
  <Badge color={t.color.gold}>⏱ {recipe.timeMin} {isRTL ? 'דק׳' : 'min'}</Badge>
  <Badge color={t.color.info}>{recipe.servings} {isRTL ? 'מנות' : 'servings'}</Badge>
  </div>
- <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
+ <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
  {[{l: isRTL ? 'קק״ל' : 'kcal',v:recipe.kcal,c:t.color.gold},{l: isRTL ? 'חלבון' : 'Protein',v:recipe.p,c:t.color.info},{l: isRTL ? 'פחמ׳' : 'Carbs',v:recipe.c,c:t.color.text},{l: isRTL ? 'שומן' : 'Fat',v:recipe.f,c:t.color.warning}].map((s, i) => (
  <div key={i} style={{ padding: 12, background: t.color.bgSoft, borderRadius: t.radius.sm, textAlign:'center'}}>
  <div style={{ fontSize: t.font.xl, fontWeight: 800, color: s.c }}>{s.v}</div>
  <div style={{ fontSize: 10, color: t.color.textMuted }}>{s.l}</div>
  </div>
  ))}
+ </div>
+
+ {/* Log this recipe into today's food diary */}
+ <div style={{
+ padding: 14, marginBottom: 20,
+ background: t.color.bgSoft, borderRadius: t.radius.md,
+ border: `1px solid ${logged ? t.color.success : t.color.border}`,
+ }}>
+ <div style={{ display:'flex', gap: 10, alignItems:'flex-end', flexWrap:'wrap'}}>
+ <div style={{ flex:'0 0 auto' }}>
+ <div style={{ fontSize: t.font.xs, color: t.color.textDim, marginBottom: 6 }}>
+ {isRTL ? 'כמה מנות אכלת?' : 'How many servings?'}
+ </div>
+ <div style={{ display:'flex', gap: 6, alignItems:'center'}}>
+ <StepBtn label="−" onClick={() => setPortions(v => Math.max(0.5, +(v - 0.5).toFixed(1)))} />
+ <div style={{
+ minWidth: 54, textAlign:'center', fontWeight: 800,
+ fontSize: t.font.lg, color: t.color.gold,
+ }}>{portions}</div>
+ <StepBtn label="+" onClick={() => setPortions(v => Math.min(totalServings * 2, +(v + 0.5).toFixed(1)))} />
+ </div>
+ </div>
+ <div style={{ flex: 1, minWidth: 150, fontSize: t.font.xs, color: t.color.textDim, lineHeight: 1.6 }}>
+ {isRTL
+ ? `יתועד: ${Math.round(recipe.kcal * share)} קק״ל · ${Math.round(recipe.p * share)}ג׳ חלבון · ${Math.round(recipe.c * share)}ג׳ פחמ׳ · ${Math.round(recipe.f * share)}ג׳ שומן`
+ : `Will log: ${Math.round(recipe.kcal * share)} kcal · ${Math.round(recipe.p * share)}g protein · ${Math.round(recipe.c * share)}g carbs · ${Math.round(recipe.f * share)}g fat`}
+ </div>
+ <Button onClick={addToToday} variant={logged ? 'ghost' : 'primary'}>
+ {logged
+ ? (isRTL ? 'נוסף להיום' : 'Added to today')
+ : (isRTL ? '+ הוסף להיום' : '+ Add to today')}
+ </Button>
+ </div>
  </div>
  <div style={{ marginBottom: 20 }}>
  <div style={{ fontWeight: 700, marginBottom: 10 }}> {isRTL ? 'מרכיבים' : 'Ingredients'}</div>
