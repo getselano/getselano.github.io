@@ -199,22 +199,27 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
           onDismiss={() => setDiag(null)}
         />
 
-        {clips.length > 0 && (
-          <button onClick={() => setView('archive')} style={{
-            width:'100%', textAlign:'start', fontFamily:'inherit', cursor:'pointer',
-            background: t.color.bgSoft, border:`1px solid ${t.color.border}`,
-            borderRadius: t.radius.md, padding:'13px 16px', color: t.color.text,
-            display:'flex', alignItems:'center', gap: 12, marginBottom: 16,
-          }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 800 }}>הסרטונים שלי</div>
-              <div style={{ fontSize: 11, color: t.color.textDim, marginTop: 2 }}>
-                {stats.count} שמורים · {formatBytes(stats.bytes)}
-              </div>
+        {/* Always shown, including at zero. Hiding it until the first clip
+            saved meant the archive was invisible to anyone whose analyses had
+            been failing — exactly the people looking for where clips went. */}
+        <button onClick={() => setView('archive')} style={{
+          width:'100%', textAlign:'start', fontFamily:'inherit', cursor:'pointer',
+          background: t.color.bgSoft,
+          border:`1px solid ${clips.length ? t.color.gold : t.color.border}`,
+          borderRadius: t.radius.md, padding:'13px 16px', color: t.color.text,
+          display:'flex', alignItems:'center', gap: 12, marginBottom: 16,
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>הסרטונים המתוקנים שלי</div>
+            <div style={{ fontSize: 11, color: t.color.textDim, marginTop: 2 }}>
+              {clips.length
+                ? `${stats.count} שמורים · ${formatBytes(stats.bytes)}`
+                : 'עדיין ריק — כל בדיקה שתריץ תישמר כאן'}
             </div>
-            <span style={{ fontSize: 20, color: t.color.gold }}>›</span>
-          </button>
-        )}
+          </div>
+          {clips.length > 0 && <Badge color={t.color.gold}>{stats.count}</Badge>}
+          <span style={{ fontSize: 20, color: t.color.gold }}>›</span>
+        </button>
         <MovementSearch value={query} onChange={setQuery} />
 
         {/* A query flattens the list — groups only help when browsing */}
@@ -411,7 +416,7 @@ function ArchiveView({ clips, stats, onBack, onOpen, onDelete, onClearAll }) {
     <div>
       <BackRow onClose={onBack} label="← חזרה לבדיקה חדשה" />
       <SectionHeader
-        title="הסרטונים שלי"
+        title="הסרטונים המתוקנים שלי"
         subtitle={`${stats.count} סרטונים · ${formatBytes(stats.bytes)} על המכשיר`}
       />
 
@@ -540,14 +545,7 @@ function SavedClipView({ clip: c, onBack, onDeleted }) {
           </Card>
         )}
 
-        {problems.length > 0 && (
-          <div>
-            <SectionHeader title={`${problems.length} תיקונים`} />
-            <div style={{ display:'grid', gap: 14 }}>
-              {problems.map(f => <CorrectionCard key={f.id} finding={f} />)}
-            </div>
-          </div>
-        )}
+        <CorrectionsNavigator problems={problems} />
 
         {good.length > 0 && (
           <Card>
@@ -583,6 +581,106 @@ function SavedClipView({ clip: c, onBack, onDeleted }) {
         >מחק סרטון</button>
       </div>
     </div>
+  )
+}
+
+// Corrections one at a time, with a way to step between them.
+//
+// Stacking several annotated frames vertically means scrolling past a
+// screenshot-sized image to reach each next fault, and losing track of how
+// many there were. Stepping keeps one fault in view with its position stated;
+// the full list stays one tap away for anyone who wants to scan it.
+function CorrectionsNavigator({ problems, subtitle }) {
+  const [index, setIndex] = useState(0)
+  const [showAll, setShowAll] = useState(false)
+
+  if (!problems.length) return null
+
+  // Guard the cursor: a re-analysis can return fewer faults than before.
+  const i = Math.min(index, problems.length - 1)
+  const single = problems.length === 1
+
+  return (
+    <div>
+      <SectionHeader
+        title={`${problems.length} תיקונים`}
+        subtitle={subtitle}
+        action={!single && (
+          <button
+            onClick={() => setShowAll(v => !v)}
+            style={{
+              background:'transparent', border:`1px solid ${t.color.border}`,
+              color: t.color.textDim, padding:'6px 10px', borderRadius: t.radius.sm,
+              cursor:'pointer', fontFamily:'inherit', fontSize: 11, fontWeight: 700,
+            }}
+          >{showAll ? 'אחד-אחד' : 'הצג הכל'}</button>
+        )}
+      />
+
+      {showAll || single ? (
+        <div style={{ display:'grid', gap: 14 }}>
+          {problems.map(f => <CorrectionCard key={f.id} finding={f} />)}
+        </div>
+      ) : (
+        <>
+          <CorrectionCard finding={problems[i]} />
+
+          <div style={{ display:'flex', alignItems:'center', gap: 10, marginTop: 12 }}>
+            <StepButton label="הקודם" glyph="›" disabled={i === 0}
+              onClick={() => setIndex(i - 1)} />
+
+            <div style={{ flex: 1, textAlign:'center' }}>
+              <div style={{ fontSize: 12, fontWeight: 800 }}>
+                תיקון {i + 1} מתוך {problems.length}
+              </div>
+              <div style={{ display:'flex', gap: 5, justifyContent:'center', marginTop: 6 }}>
+                {problems.map((f, n) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setIndex(n)}
+                    aria-label={`תיקון ${n + 1}: ${f.he}`}
+                    style={{
+                      width: n === i ? 18 : 7, height: 7, borderRadius: 999,
+                      border:'none', padding: 0, cursor:'pointer',
+                      background: n === i ? t.color.warning : t.color.border,
+                      transition: t.transition,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <StepButton label="הבא" glyph="‹" disabled={i === problems.length - 1}
+              onClick={() => setIndex(i + 1)} />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// RTL: "next" advances leftward, so the glyphs are mirrored relative to what a
+// left-to-right layout would use.
+function StepButton({ label, glyph, disabled, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      style={{
+        display:'flex', alignItems:'center', gap: 6,
+        background: disabled ? 'transparent' : t.color.bgSoft,
+        border:`1px solid ${disabled ? t.color.border : t.color.gold}`,
+        color: disabled ? t.color.silver3 : t.color.gold,
+        padding:'10px 14px', borderRadius: t.radius.sm,
+        cursor: disabled ? 'default' : 'pointer',
+        fontFamily:'inherit', fontSize: 12, fontWeight: 700,
+        opacity: disabled ? 0.4 : 1, transition: t.transition,
+      }}
+    >
+      <span style={{ fontSize: 16, lineHeight: 1 }}>{glyph}</span>
+      {label}
+    </button>
   )
 }
 
@@ -826,17 +924,10 @@ function Report({ result, movement, coaching, stage, onRetry }) {
       )}
 
       {/* Each fault, on the frame it happened, with the required angle */}
-      {problems.length > 0 && (
-        <div>
-          <SectionHeader
-            title={`${problems.length} תיקונים`}
-            subtitle={`${duration} שניות · ${Math.round(coverage * 100)}% מהפריימים זוהו`}
-          />
-          <div style={{ display:'grid', gap: 14 }}>
-            {problems.map(f => <CorrectionCard key={f.id} finding={f} />)}
-          </div>
-        </div>
-      )}
+      <CorrectionsNavigator
+        problems={problems}
+        subtitle={`${duration} שניות · ${Math.round(coverage * 100)}% מהפריימים זוהו`}
+      />
 
       {good.length > 0 && (
         <Card>
