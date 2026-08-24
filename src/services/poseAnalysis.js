@@ -23,6 +23,15 @@ const MODEL_URL = `${import.meta.env.BASE_URL || '/'}mediapipe/pose_landmarker_l
 const SAMPLE_FPS = 10
 const MAX_DURATION_SEC = 20
 
+// Hard ceiling on frames per analysis, independent of clip length.
+//
+// At 10 fps a 10-second clip is 100 frames, and every frame costs a seek plus
+// an inference. On a phone that is tens of seconds of work, which reads as a
+// frozen app long before it finishes — and it buys nothing: the positions a
+// lift is judged on are extremes, and 60 samples locate them as well as 100.
+// Short clips still get the full 10 fps; only long ones are thinned.
+const MAX_SAMPLES = 60
+
 // MediaPipe landmark indices we care about (BlazePose 33-point topology).
 export const LM = {
   nose: 0,
@@ -415,7 +424,8 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
     canvas.height = h
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
-    const step = 1 / SAMPLE_FPS
+    // Thin the sampling only when the clip is long enough to need it.
+    const step = Math.max(1 / SAMPLE_FPS, duration / MAX_SAMPLES)
     const frames = []
     let blankFrames = 0
     // Claimed once per clip, before any frame is fed, so this analysis never
@@ -430,14 +440,11 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
 
       // A browser that reports a seek but paints nothing produces zero
       // landmarks, which would otherwise be blamed on the user's framing.
-      // Checking the first few frames catches it while it is still cheap.
-      if (frames.length < 3 && isBlankFrame(ctx, w, h)) blankFrames++
-      if (blankFrames >= 3) {
-        throw new Error(
-          'הדפדפן פתח את הסרטון אבל לא הצליח לפענח את התמונה — כנראה פורמט לא נתמך ' +
-          '(HEVC/H.265 מאייפון). באייפון: הגדרות ← מצלמה ← פורמטים ← "הכי תואם", וצלם מחדש.'
-        )
-      }
+      // Counted across the whole clip and judged at the end: a lift can
+      // genuinely open on a dark frame, so the first few proving black is not
+      // evidence of anything.
+      if (isBlankFrame(ctx, w, h)) blankFrames++
+
       // Timestamps must increase monotonically in VIDEO mode.
       let result
       try {
@@ -454,6 +461,17 @@ export async function analyzeVideo(file, { movement, onProgress, signal } = {}) 
       // skeleton and the offending angle marked on it.
       frames.push({ t: +tSec.toFixed(2), measures: m, landmarks: lm || null })
       onProgress?.('analyzing', Math.min(1, tSec / duration))
+    }
+
+    // Judged now that the whole clip has been sampled. Nearly every frame
+    // coming back black means the decoder never produced an image, which is a
+    // different problem from "we couldn't find you in the frame" and deserves
+    // a different instruction.
+    if (frames.length && blankFrames >= frames.length * 0.9) {
+      throw new Error(
+        'הדפדפן פתח את הסרטון אבל לא הצליח לפענח את התמונה — כנראה פורמט לא נתמך ' +
+        '(HEVC/H.265 מאייפון). באייפון: הגדרות ← מצלמה ← פורמטים ← "הכי תואם", וצלם מחדש.'
+      )
     }
 
     const detected = frames.filter(f => f.measures)

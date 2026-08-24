@@ -883,6 +883,22 @@ const STAGE_LABEL = {
 
 function Working({ stage, progress, onCancel }) {
   const pct = Math.round((progress || 0) * 100)
+  const [elapsed, setElapsed] = useState(0)
+
+  // Analysis is genuinely slow on a phone — tens of seconds for a long clip.
+  // Without a moving number a working app is indistinguishable from a stuck
+  // one, and the user reasonably concludes it failed.
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(e => e + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Extrapolate from how far it has actually come, once there is enough
+  // progress for the estimate to mean anything.
+  const remaining = progress > 0.08 && elapsed > 2
+    ? Math.max(0, Math.round(elapsed / progress - elapsed))
+    : null
+
   return (
     <Card>
       <div style={{ fontWeight: 700, marginBottom: 10 }}>{STAGE_LABEL[stage] || 'מעבד…'}</div>
@@ -894,9 +910,22 @@ function Working({ stage, progress, onCancel }) {
           opacity: stage === 'analyzing' ? 1 : 0.35,
         }} />
       </div>
-      {stage === 'analyzing' && (
-        <div style={{ fontSize: 11, color: t.color.textMuted, marginTop: 6 }}>{pct}%</div>
-      )}
+      <div style={{
+        display:'flex', justifyContent:'space-between', gap: 8,
+        fontSize: 11, color: t.color.textMuted, marginTop: 6,
+      }}>
+        <span>{stage === 'analyzing' ? `${pct}%` : ''}</span>
+        <span>
+          {remaining != null
+            ? `נותרו כ-${remaining} שניות`
+            : `${elapsed} שניות`}
+        </span>
+      </div>
+
+      <div style={{ fontSize: 11, color: t.color.textMuted, marginTop: 8, lineHeight: 1.6 }}>
+        הניתוח רץ על המכשיר שלך — אל תסגור את המסך. סרטון ארוך לוקח יותר זמן.
+      </div>
+
       <Button variant="ghost" size="sm" onClick={onCancel} style={{ marginTop: 12 }}>בטל</Button>
     </Card>
   )
