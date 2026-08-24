@@ -36,7 +36,7 @@ export function OnDemand() {
  <Card style={{ padding: 24, background: `linear-gradient(135deg, ${t.color.bgCard} 0%, ${t.color.bgElevated} 100%)`, position:'relative', overflow:'hidden'}}>
  <div style={{ position:'absolute', top: -30, left: -30, width: 180, height: 180, background: t.color.goldGlow, borderRadius:'50%', filter:'blur(40px)'}} />
  <div style={{ position:'relative', zIndex: 1 }}>
- <Badge color={t.color.gold}> ON-DEMAND</Badge>
+ <Badge color={t.color.gold}> V.O.D</Badge>
  <h1 style={{ fontSize: t.font.hero, fontWeight: 900, marginTop: 10, marginBottom: 6 }}>{isRTL ? 'אימונים בבית — בקליק' : 'Home workouts — one click away'}</h1>
  <p style={{ color: t.color.textDim, fontSize: t.font.md, maxWidth: 520, lineHeight: 1.5 }}>
  {VIDEOS.length} {isRTL ? 'סרטוני אימון בבית: פונקציונאלי, יוגה, פילאטיס, כוח משקל גוף, METCONS, ו־MOBILITY.' : 'home workout videos: functional, yoga, pilates, bodyweight strength, CrossFit, and MOBILITY.'}

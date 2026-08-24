@@ -120,7 +120,7 @@ export const APP_GUIDES = [
   {
     id: 'ondemand',
     pageKey: 'ondemand',
-    title: 'On-Demand',
+    title: 'V.O.D',
     subtitle: 'קטלוג סרטוני אימון',
     videoId: null,
     features: [
