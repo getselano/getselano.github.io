@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { t } from '../../../theme/tokens'
 import { Card, Button, Badge, SectionHeader } from '../../../components/ui/UI'
 import { useI18n } from '../../../i18n/i18n'
+import { SupplementsStore } from './SupplementsStore'
 
 const CONTACT_EMAIL = 'israelgrip@gmail.com'
 const CONTACT_WHATSAPP = ''// add international format when available, e.g. '972501234567'
@@ -58,6 +59,7 @@ const CATEGORIES_EN = { 'הכל':'All','ביגוד':'Apparel','אביזרים':'
 
 export function Store() {
  const { isRTL } = useI18n()
+ const [section, setSection] = useState('gear')   // gear | supplements
  const [cat, setCat] = useState('הכל')
  const [selected, setSelected] = useState(null)
  const [size, setSize] = useState(null)
@@ -67,6 +69,17 @@ export function Store() {
  const psub = (p) => (isRTL ? p.subtitle : (p.subtitle_en || p.subtitle))
 
  const filtered = cat === 'הכל'? PRODUCTS : PRODUCTS.filter(p => p.category === cat)
+
+ // Supplements reuse the same mailto ordering path as the gear catalogue —
+ // there is no payment processing on either side.
+ const orderSupplement = ({ name, price, items }) => {
+ const lines = items?.length ? `\n כולל: ${items.join(' · ')}` : ''
+ const body = isRTL
+ ? `שלום, אשמח להזמין:\n\n מוצר: ${name}${lines}\n מחיר: ₪${price}\n\nשם:\nכתובת למשלוח:\nטלפון:\n`
+ : `Hi, I'd like to order:\n\n Product: ${name}${lines}\n Price: ₪${price}\n\nName:\nShipping address:\nPhone:\n`
+ const subject = isRTL ? `הזמנת תוסף: ${name}` : `Supplement order: ${name}`
+ window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+ }
 
  const order = (product, chosenSize) => {
  const productName = pname(product)
@@ -92,6 +105,31 @@ export function Store() {
  </div>
  </Card>
 
+ {/* Section switch — gear vs supplements */}
+ <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8 }}>
+ {[
+ { key:'gear', he:'ציוד ומיתוג', en:'Gear' },
+ { key:'supplements', he:'תוספי תזונה', en:'Supplements' },
+ ].map(x => {
+ const active = section === x.key
+ return (
+ <button key={x.key} onClick={() => setSection(x.key)} style={{
+ padding:'14px 10px', borderRadius: t.radius.md, cursor:'pointer',
+ background: active
+ ? `linear-gradient(160deg, ${t.color.goldGlow}, ${t.color.bgElevated} 70%)`
+ : t.color.bgSoft,
+ border:`1px solid ${active ? t.color.gold : t.color.border}`,
+ color: active ? t.color.gold : t.color.text,
+ fontFamily:'inherit', fontWeight: 800, fontSize: 15,
+ transition: t.transition,
+ }}>{isRTL ? x.he : x.en}</button>
+ )
+ })}
+ </div>
+
+ {section === 'supplements' && <SupplementsStore onOrder={orderSupplement} />}
+
+ {section === 'gear' && <>
  {/* Category tabs */}
  <div style={{ display:'flex', gap: 8, overflowX:'auto', paddingBottom: 4 }}>
  {CATEGORIES_HE.map(c => (
@@ -120,6 +158,7 @@ export function Store() {
  </Card>
  ))}
  </div>
+ </>}
 
  {/* Order modal */}
  {selected && (
