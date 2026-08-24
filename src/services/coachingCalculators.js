@@ -10,22 +10,20 @@
 // `nav` becomes a clickable button in the chat (`{ page, label }`).
 // `missing` is an array of profile field names — used to tell the user
 // which onboarding fields they should fill so we can answer.
+//
+// All calorie / macro / water math comes from utils/calc so the chat can
+// never quote a different number than the Nutrition tab shows.
+
+import { nutritionTargets, goalAdjustments, waterLiters, resolveActivity, activityFactors } from '../utils/calc'
 
 // ─── Constants ────────────────────────────────────────────────
-const ACTIVITY_MULTIPLIER = {
-  sedentary: 1.2,
-  light: 1.375,
-  moderate: 1.55,
-  active: 1.725,
-  very_active: 1.9,
-}
-
-// Goal → calorie adjustment vs TDEE + typical protein g/kg
-const GOAL_ADJUSTMENT = {
-  cutting:     { kcalMul: 0.80, proteinPerKg: 2.2, label: 'חיטוב · ירידה במשקל' },
-  maintenance: { kcalMul: 1.00, proteinPerKg: 1.6, label: 'תחזוקה' },
-  recomp:      { kcalMul: 1.00, proteinPerKg: 1.9, label: 'שינוי הרכב גוף' },
-  bulk:        { kcalMul: 1.10, proteinPerKg: 1.8, label: 'עלייה במסה' },
+// Maps the intent detected in the question onto a goalKey from utils/calc.
+// The multipliers and protein-per-kg values live there, not here.
+const INTENT_TO_GOAL_KEY = {
+  cutting: 'cut',
+  maintenance: 'maintain',
+  recomp: 'recomp',
+  bulk: 'bulk',
 }
 
 // Rest-between-sets recommendation per training mode
@@ -61,15 +59,11 @@ function goalIntentFrom(question, profile, active) {
   return 'maintenance'
 }
 
-function mifflinBMR({ weightKg, heightCm, age, sex }) {
-  const base = 10 * weightKg + 6.25 * heightCm - 5 * age
-  return sex === 'female' ? base - 161 : base + 5
-}
-
-function tdee({ weightKg, heightCm, age, sex, activity }) {
-  const bmr = mifflinBMR({ weightKg, heightCm, age, sex })
-  const mul = ACTIVITY_MULTIPLIER[activity] || ACTIVITY_MULTIPLIER.moderate
-  return { bmr: Math.round(bmr), tdee: Math.round(bmr * mul), activityMul: mul }
+// Resolve the profile plus the intent detected in the question into the same
+// target object the Nutrition tab renders.
+function targetsFor(profile, intent) {
+  const goalKey = INTENT_TO_GOAL_KEY[intent] || 'maintain'
+  return nutritionTargets({ ...profile, goalKey })
 }
 
 function missingProfileFields(profile, required) {
@@ -95,16 +89,15 @@ function calcCalories(question, state) {
     return missingProfileAnswer(missing.map(k => heMap[k] || k))
   }
 
-  const { bmr, tdee: t, activityMul } = tdee(p)
   const intent = goalIntentFrom(question, p, activeGoal(state))
-  const adj = GOAL_ADJUSTMENT[intent] || GOAL_ADJUSTMENT.maintenance
-  const target = Math.round(t * adj.kcalMul)
+  const tg = targetsFor(p, intent)
 
   return {
     text:
-      `לפי הנתונים שלך (${p.weightKg}ק״ג · ${p.heightCm}ס״מ · גיל ${p.age}, פעילות ×${activityMul}) — ` +
-      `**${target.toLocaleString()} קלוריות ליום** ל־${adj.label}.\n\n` +
-      `פירוט: BMR ${bmr.toLocaleString()} · TDEE ${t.toLocaleString()} · יעד ×${adj.kcalMul}`,
+      `לפי הנתונים שלך (${p.weightKg}ק״ג · ${p.heightCm}ס״מ · גיל ${p.age}, פעילות ×${tg.activityFactor}) — ` +
+      `**${tg.kcal.toLocaleString()} קלוריות ליום** ל־${tg.goal.label}.\n\n` +
+      `פירוט: BMR ${tg.bmr.toLocaleString()} · TDEE ${tg.tdee.toLocaleString()} · יעד ×${tg.goal.kcalMul}\n` +
+      `מקרו: חלבון ${tg.protein} ג׳ · פחמימות ${tg.carbs} ג׳ · שומן ${tg.fat} ג׳`,
     nav: { page: 'nutrition', label: 'תזונה — עדכן ארוחה' },
     source: 'calculator',
   }
@@ -118,12 +111,14 @@ function calcProtein(question, state) {
   if (!p.weightKg) return missingProfileAnswer(['משקל'])
 
   const intent = goalIntentFrom(question, p, activeGoal(state))
-  const adj = GOAL_ADJUSTMENT[intent] || GOAL_ADJUSTMENT.maintenance
-  const grams = Math.round(p.weightKg * adj.proteinPerKg)
+  const tg = targetsFor(p, intent)
+  // Same number the Nutrition tab shows: the g/kg floor, raised by the diet
+  // template when that template asks for more protein.
+  const grams = tg.protein || Math.round(p.weightKg * tg.goal.proteinPerKg)
 
   return {
     text:
-      `**${grams} גרם חלבון ליום** (${adj.proteinPerKg} גר׳/ק״ג · ${adj.label}).\n\n` +
+      `**${grams} גרם חלבון ליום** (${tg.goal.proteinPerKg} גר׳/ק״ג · ${tg.goal.label}).\n\n` +
       `זה בערך ${Math.round(grams / 25)} מנות של 25 גרם — למשל: 150 גר׳ עוף = 33 גר׳, ` +
       `2 ביצים = 12 גר׳, שייק חלבון = 25 גר׳.`,
     nav: { page: 'nutrition', label: 'תזונה — מעקב מקרו' },
@@ -138,10 +133,11 @@ function calcWater(question, state) {
   const p = state.profile || {}
   if (!p.weightKg) return missingProfileAnswer(['משקל'])
 
-  const base = Math.round((p.weightKg * 35) / 100) / 10 // liters, 1 decimal
+  const base = waterLiters(p.weightKg, p.activity)
+  const actLabel = activityFactors[resolveActivity(p.activity)]?.label || ''
   return {
     text:
-      `**${base} ליטר מים ליום** (35 מ״ל לכל ק״ג משקל גוף).\n\n` +
+      `**${base} ליטר מים ליום** (33 מ״ל לכל ק״ג + תוספת לפי רמת פעילות${actLabel ? ` — ${actLabel}` : ''}).\n\n` +
       `ביום אימון — הוסף עוד 500-750 מ״ל לכל שעת פעילות. ` +
       `בחום קיצוני או קרדיו כבד — עד 3.5 ליטר.`,
     nav: { page: 'nutrition', label: 'תזונה — מים' },

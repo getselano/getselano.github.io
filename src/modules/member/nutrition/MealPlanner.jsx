@@ -3,7 +3,7 @@ import { t } from '../../../theme/tokens'
 import { useApp } from '../../../store/AppStore'
 import { Card, Button, Badge, SectionHeader, EmptyState, Modal } from '../../../components/ui/UI'
 import { ai } from '../../../ai/aiProvider'
-import { bmr, tdee, macros, goalAdjustments, dietTemplates } from '../../../utils/calc'
+import { nutritionTargets } from '../../../utils/calc'
 import { DAYS_HE } from '../../../utils/date'
 import { getRecipeByName, recipes } from '../../../data/recipes'
 
@@ -14,11 +14,8 @@ export function MealPlanner() {
  const [recipeModal, setRecipeModal] = useState(null)
 
  const targets = useMemo(() => {
- const _bmr = bmr(state.profile)
- const _tdee = tdee(_bmr, state.profile.activity)
- const kcal = _tdee + (goalAdjustments[state.profile.goalKey]?.kcalDelta || 0)
- const diet = dietTemplates[state.profile.dietKey] || dietTemplates.balanced
- return { kcal, ...macros(kcal, diet.p, diet.c, diet.f), diet: diet.label }
+ const _t = nutritionTargets(state.profile)
+ return { kcal: _t.kcal, protein: _t.protein, carbs: _t.carbs, fat: _t.fat, diet: _t.diet.label }
  }, [state.profile])
 
  const generate = async () => {

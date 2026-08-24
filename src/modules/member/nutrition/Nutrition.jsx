@@ -3,7 +3,7 @@ import { t } from '../../../theme/tokens'
 import { useApp } from '../../../store/AppStore'
 import { Card, Button, Input, Select, Badge, SectionHeader, Tabs, Modal, EmptyState, ProgressBar } from '../../../components/ui/UI'
 import { DonutSegments } from '../../../components/charts/Charts'
-import { bmr, tdee, macros, activityFactors, goalAdjustments, dietTemplates, bmi, waterLiters } from '../../../utils/calc'
+import { nutritionTargets, activityFactors, goalAdjustments, dietTemplates, bmi, waterLiters } from '../../../utils/calc'
 import { foods } from '../../../data/foods'
 import { dietInfo } from '../../../data/dietTemplates'
 import { bloodMarkers, statusForValue } from '../../../data/bloodMarkers'
@@ -73,11 +73,10 @@ function Today() {
  f: acc.f + (m.f||0),
  }), { kcal:0, p:0, c:0, f:0 })
 
- const _bmr = bmr(state.profile)
- const _tdee = tdee(_bmr, state.profile.activity)
- const kcalTarget = _tdee + (goalAdjustments[state.profile.goalKey]?.kcalDelta || 0)
- const diet = dietTemplates[state.profile.dietKey] || dietTemplates.balanced
- const target = macros(kcalTarget, diet.p, diet.c, diet.f)
+ const _t = nutritionTargets(state.profile)
+ const kcalTarget = _t.kcal
+ const diet = _t.diet
+ const target = { protein: _t.protein, carbs: _t.carbs, fat: _t.fat }
 
  return (
  <div style={{ display:'grid', gap: 16 }}>
@@ -248,12 +247,17 @@ function Calculator() {
  const { state, updateProfile } = useApp()
  const { isRTL } = useI18n()
  const p = state.profile
- const _bmr = bmr(p)
- const _tdee = tdee(_bmr, p.activity)
- const goal = goalAdjustments[p.goalKey]
- const kcalTarget = _tdee + goal.kcalDelta
- const diet = dietTemplates[p.dietKey]
- const m = macros(kcalTarget, diet.p, diet.c, diet.f)
+ const _t = nutritionTargets(p)
+ const _bmr = _t.bmr
+ const _tdee = _t.tdee
+ const goal = _t.goal
+ const kcalTarget = _t.kcal
+ const diet = _t.diet
+ const m = { protein: _t.protein, carbs: _t.carbs, fat: _t.fat }
+ // Percentages the split actually landed on — protein comes from g/kg, so
+ // these are derived from the result rather than read off the template.
+ const pctOf = (grams, kcalPerG) => kcalTarget ? Math.round((grams * kcalPerG / kcalTarget) * 100) : 0
+ const actualPct = { p: pctOf(m.protein, 4), c: pctOf(m.carbs, 4), f: pctOf(m.fat, 9) }
 
  return (
  <div style={{ display:'grid', gap: 16 }}>
@@ -286,12 +290,22 @@ function Calculator() {
  </div>
 
  <Card>
- <SectionHeader title={isRTL ? 'פילוח מקרו יומי' : 'Daily macro breakdown'} subtitle={`${diet.label} · ${diet.p}/${diet.c}/${diet.f}`} />
+ <SectionHeader
+ title={isRTL ? 'פילוח מקרו יומי' : 'Daily macro breakdown'}
+ subtitle={`${diet.label} · ${actualPct.p}/${actualPct.c}/${actualPct.f}`}
+ />
  <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap: 12 }}>
- <BigMacro label={isRTL ? 'חלבון' : 'Protein'} grams={m.protein} pct={diet.p} color={t.color.info} />
- <BigMacro label={isRTL ? 'פחמימות' : 'Carbs'} grams={m.carbs} pct={diet.c} color={t.color.gold} />
- <BigMacro label={isRTL ? 'שומן' : 'Fat'} grams={m.fat} pct={diet.f} color={t.color.warning} />
+ <BigMacro label={isRTL ? 'חלבון' : 'Protein'} grams={m.protein} pct={actualPct.p} color={t.color.info} />
+ <BigMacro label={isRTL ? 'פחמימות' : 'Carbs'} grams={m.carbs} pct={actualPct.c} color={t.color.gold} />
+ <BigMacro label={isRTL ? 'שומן' : 'Fat'} grams={m.fat} pct={actualPct.f} color={t.color.warning} />
  </div>
+ {!!p.weightKg && (
+ <div style={{ fontSize: t.font.xs, color: t.color.textDim, marginTop: 10, lineHeight: 1.6 }}>
+ {isRTL
+ ? `החלבון נגזר ממשקל הגוף — ${goal.proteinPerKg} גרם לכל ק״ג (${Math.round(p.weightKg * goal.proteinPerKg)} ג׳), ולא מאחוז מהקלוריות. שאר הקלוריות מתחלקות בין פחמימות לשומן לפי היחס של ${diet.label}.`
+ : `Protein is derived from bodyweight — ${goal.proteinPerKg} g/kg (${Math.round(p.weightKg * goal.proteinPerKg)} g), not a percentage of calories. The rest is split between carbs and fat by the ${diet.label} ratio.`}
+ </div>
+ )}
  </Card>
  </div>
  )

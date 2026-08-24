@@ -6,7 +6,7 @@ import { readHealthAck } from '../../../components/legal/HealthAcknowledgment'
 import { Card, Button, Ring, Stat, Badge, SectionHeader, ProgressBar } from '../../../components/ui/UI'
 import { BarChart } from '../../../components/charts/Charts'
 import { greeting, DAYS_SHORT_HE, todayKey } from '../../../utils/date'
-import { bmr, tdee, macros, goalAdjustments, dietTemplates, waterLiters } from '../../../utils/calc'
+import { nutritionTargets, goalAdjustments, dietTemplates, waterLiters } from '../../../utils/calc'
 import { DailyBoost } from '../../../components/notifications/DailyBoost'
 import { Kicker, SectionHead } from '../../../design/components/primitives'
 import { useI18n } from '../../../i18n/i18n'
@@ -41,12 +41,12 @@ export function Home({ go }) {
    prettifyFromEmail(user?.email) ||
    (isRTL ? (isFemale ? 'אלופה' : 'אלוף') : 'Champion')
  const readyWord = isRTL ? (isFemale ? 'מוכנה?' : 'מוכן?') : 'Ready?'
- const _bmr = bmr(profile)
- const _tdee = tdee(_bmr, profile.activity)
- const goalDelta = goalAdjustments[profile.goalKey]?.kcalDelta || 0
- const kcalTarget = _tdee + goalDelta
- const diet = dietTemplates[profile.dietKey] || dietTemplates.balanced
- const target = macros(kcalTarget, diet.p, diet.c, diet.f)
+ const _targets = nutritionTargets(profile)
+ const _bmr = _targets.bmr
+ const _tdee = _targets.tdee
+ const kcalTarget = _targets.kcal
+ const diet = _targets.diet
+ const target = { protein: _targets.protein, carbs: _targets.carbs, fat: _targets.fat }
 
  const todayMeals = mealLogs[todayKey()] || []
  const todayKcal = Math.round(todayMeals.reduce((s, m) => s + (m.kcal || 0), 0))

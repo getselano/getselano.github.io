@@ -2,7 +2,7 @@
 // Pure function, no side effects. Each rule returns an Insight or null.
 // Future LLM provider can be swapped in - keep the same shape.
 
-import { bmr, tdee, macros, goalAdjustments, dietTemplates } from '../utils/calc'
+import { nutritionTargets } from '../utils/calc'
 import { bloodMarkers, statusForValue } from '../data/bloodMarkers'
 import { todayKey } from '../utils/date'
 
@@ -45,11 +45,10 @@ function buildContext(state) {
   const trendMood = trend(recentCheckins.map(c => c.mood).reverse())
   const trendSleep = trend(recentCheckins.map(c => c.sleepHours).reverse())
 
-  const _bmr = bmr(state.profile)
-  const _tdee = tdee(_bmr, state.profile.activity)
-  const kcalTarget = _tdee + (goalAdjustments[state.profile.goalKey]?.kcalDelta || 0)
-  const diet = dietTemplates[state.profile.dietKey] || dietTemplates.balanced
-  const macroTarget = macros(kcalTarget, diet.p, diet.c, diet.f)
+  const _t = nutritionTargets(state.profile)
+  const kcalTarget = _t.kcal
+  const diet = _t.diet
+  const macroTarget = { protein: _t.protein, carbs: _t.carbs, fat: _t.fat }
 
   const todayMeals = state.mealLogs[todayKey()] || []
   const todayKcal = todayMeals.reduce((s, m) => s + (m.kcal || 0), 0)
