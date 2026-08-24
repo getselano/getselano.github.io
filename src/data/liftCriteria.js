@@ -694,6 +694,88 @@ export function groupedMovements(discipline) {
 
 export const findMovement = (id) => MOVEMENTS.find(m => m.id === id) || null
 
+// Shorthand a trainee is likely to type instead of the full name. Without
+// these, "OHS", "C2B" and "T2B" — which is what the whiteboard actually says —
+// find nothing.
+const ALIASES = {
+  back_squat:      ['bs', 'squat', 'סקוואט', 'סקווט'],
+  front_squat:     ['fs', 'סקוואט קדמי'],
+  overhead_squat:  ['ohs', 'oh squat'],
+  deadlift:        ['dl', 'דד'],
+  snatch_deadlift: ['sndl', 'snatch dl'],
+  clean_pull:      ['cp'],
+  clean:           ['קלין'],
+  power_clean:     ['pc', 'פאוור קלין'],
+  hang_clean:      ['hc', 'האנג'],
+  snatch:          ['sn', 'סנאץ'],
+  power_snatch:    ['ps', 'פאוור סנאץ'],
+  clean_and_jerk:  ['cj', 'c&j', 'clean jerk'],
+  split_jerk:      ['sj', 'jerk', 'ג׳רק', 'גרק'],
+  push_jerk:       ['pj'],
+  push_press:      ['pp', 'פוש פרס'],
+  overhead_press:  ['ohp', 'strict press', 'press', 'לחיצה'],
+  thruster:        ['thrusters', 'תראסטר'],
+  strict_pullup:   ['pullup', 'pull up', 'pull-up', 'מתח'],
+  kipping_pullup:  ['kipping', 'kip', 'קיפינג'],
+  chest_to_bar:    ['c2b', 'ctb', 'chest bar'],
+  bar_muscle_up:   ['bmu', 'bar mu', 'muscle up'],
+  ring_muscle_up:  ['rmu', 'ring mu', 'muscle up'],
+  ring_row:        ['row'],
+  pushup:          ['push up', 'push-up', 'שכיבות'],
+  dip:             ['dips', 'מקבילים'],
+  ring_dip:        ['rd', 'ring dips'],
+  strict_hspu:     ['hspu', 'handstand push up', 'handstand pushup'],
+  kipping_hspu:    ['khspu', 'kipping hspu'],
+  handstand_hold:  ['hs', 'handstand', 'עמידת ידיים'],
+  wall_walk:       ['ww', 'wall walks'],
+  toes_to_bar:     ['t2b', 'ttb', 'toes bar'],
+  l_sit:           ['lsit', 'l sit'],
+  hollow_hold:     ['hollow', 'hollow body'],
+  ghd_situp:       ['ghd', 'ghd sit up', 'situp'],
+  burpee:          ['burpees', 'ברפיז'],
+  box_jump:        ['bj', 'box jumps', 'קפיצות'],
+  pistol:          ['pistols', 'single leg squat'],
+}
+
+// Free-text search over Hebrew name, English name, id and shorthand.
+// Ranked so an exact or prefix match beats a substring buried mid-word.
+export function searchMovements(discipline, query) {
+  const q = String(query || '').trim().toLowerCase()
+  if (!q) return []
+  const groupLabels = Object.fromEntries(
+    (MOVEMENT_GROUPS[discipline] || []).map(g => [g.key, g.he])
+  )
+
+  const scored = []
+  for (const m of MOVEMENTS_BY_DISCIPLINE(discipline)) {
+    const he = m.he.toLowerCase()
+    const en = m.en.toLowerCase()
+    const id = m.id.toLowerCase().replace(/_/g, ' ')
+    const aliases = ALIASES[m.id] || []
+
+    let score = 0
+    if (he === q || en === q || aliases.includes(q)) score = 100
+    else if (en.startsWith(q) || he.startsWith(q)) score = 80
+    else if (aliases.some(a => a.startsWith(q))) score = 70
+    // Match on any word boundary — "squat" should find "Front Squat"
+    else if (en.split(/\s+/).some(w => w.startsWith(q))) score = 60
+    else if (he.split(/\s+/).some(w => w.startsWith(q))) score = 60
+    else if (en.includes(q) || he.includes(q) || id.includes(q)) score = 40
+    else if (aliases.some(a => a.includes(q))) score = 30
+
+    if (score) scored.push({ ...m, groupLabel: groupLabels[m.group], _score: score })
+  }
+
+  // Ties break toward the shorter name: "snat" matches both Snatch and Snatch
+  // Deadlift equally well, and the plain lift is the likelier intent.
+  return scored
+    .sort((a, b) =>
+      (b._score - a._score) ||
+      (a.en.length - b.en.length) ||
+      a.he.localeCompare(b.he, 'he')
+    )
+}
+
 // ─── Evaluation ───────────────────────────────────────────────────
 // Turn the measured summary into pass/fail findings for one movement.
 // Returns [] rather than guessing when the metric wasn't measurable.

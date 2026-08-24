@@ -3,7 +3,7 @@ import { t } from '../../../../theme/tokens'
 import { useApp } from '../../../../store/AppStore'
 import { Card, Button, Badge, SectionHeader } from '../../../../components/ui/UI'
 import { DisclaimerNote } from '../../../../components/legal/DisclaimerNote'
-import { groupedMovements, evaluateMovement } from '../../../../data/liftCriteria'
+import { groupedMovements, searchMovements, evaluateMovement } from '../../../../data/liftCriteria'
 import { analyzeVideo, POSE_LIMITS } from '../../../../services/poseAnalysis'
 import { coachTechnique, aiEnabled } from '../../../../services/aiCoach'
 
@@ -27,6 +27,7 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
   const [result, setResult] = useState(null)
   const [coaching, setCoaching] = useState(null)
   const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
   // Two separate inputs: `capture` forces the camera on mobile and skips the
   // gallery entirely, so picking an existing clip needs its own input without it.
   const cameraRef = useRef(null)
@@ -99,37 +100,34 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
           title="בדיקת טכניקה"
           subtitle="בחר תרגיל, צלם או העלה קליפ, וקבל מדידת זוויות ותיקונים"
         />
-        {/* Grouped so a 15-movement discipline doesn't render as one long wall */}
-        <div style={{ display:'grid', gap: 20 }}>
-          {groups.map(g => (
-            <div key={g.key}>
-              <div style={{
-                fontFamily: t.font.family.mono, fontSize: 10, letterSpacing:'0.2em',
-                color: t.color.silver2, fontWeight: 700, textTransform:'uppercase',
-                marginBottom: 8,
-              }}>{g.he} · {g.movements.length}</div>
-              <div style={{ display:'grid', gap: 8 }}>
-                {g.movements.map(m => (
-                  <button key={m.id} onClick={() => setMovement(m)} style={{
-                    width:'100%', textAlign:'start', fontFamily:'inherit', cursor:'pointer',
-                    background: t.color.bgSoft, border: `1px solid ${t.color.border}`,
-                    borderRadius: t.radius.md, padding:'13px 16px', color: t.color.text,
-                    display:'flex', alignItems:'center', gap: 12, transition: t.transition,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = t.color.gold }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = t.color.border }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: t.color.gold }}>{m.he}</div>
-                      <div style={{ fontSize: 11, color: t.color.textDim, marginTop: 2 }}>{m.en}</div>
-                    </div>
-                    <span style={{ fontSize: 20, color: t.color.gold }}>›</span>
-                  </button>
-                ))}
+        <MovementSearch value={query} onChange={setQuery} />
+
+        {/* A query flattens the list — groups only help when browsing */}
+        {query.trim() ? (
+          <SearchResults
+            discipline={discipline}
+            query={query}
+            onPick={setMovement}
+            onClear={() => setQuery('')}
+          />
+        ) : (
+          <div style={{ display:'grid', gap: 20 }}>
+            {groups.map(g => (
+              <div key={g.key}>
+                <div style={{
+                  fontFamily: t.font.family.mono, fontSize: 10, letterSpacing:'0.2em',
+                  color: t.color.silver2, fontWeight: 700, textTransform:'uppercase',
+                  marginBottom: 8,
+                }}>{g.he} · {g.movements.length}</div>
+                <div style={{ display:'grid', gap: 8 }}>
+                  {g.movements.map(m => (
+                    <MovementRow key={m.id} movement={m} onPick={() => setMovement(m)} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     )
   }
@@ -206,6 +204,103 @@ export function TechniqueAnalyzer({ discipline, onClose }) {
         <Report result={result} movement={movement} coaching={coaching} stage={stage} onRetry={reset} />
       )}
     </div>
+  )
+}
+
+// Typing beats scrolling once the list passes ~20 entries. Matches Hebrew and
+// English names plus the internal id, so "power clean", "פאוור" and
+// "power_clean" all land on the same movement.
+function MovementSearch({ value, onChange }) {
+  return (
+    <div style={{ position:'relative', marginBottom: 16 }}>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="חפש תרגיל — בעברית או באנגלית"
+        dir="auto"
+        style={{
+          width:'100%', padding:'13px 44px 13px 16px',
+          background: t.color.bgSoft, border:`1px solid ${t.color.border}`,
+          borderRadius: t.radius.md, color: t.color.text,
+          fontFamily:'inherit', fontSize: 15, outline:'none',
+        }}
+        onFocus={e => { e.currentTarget.style.borderColor = t.color.gold }}
+        onBlur={e => { e.currentTarget.style.borderColor = t.color.border }}
+      />
+      {value ? (
+        <button
+          onClick={() => onChange('')}
+          aria-label="נקה חיפוש"
+          style={{
+            position:'absolute', insetInlineEnd: 8, top:'50%', transform:'translateY(-50%)',
+            width: 28, height: 28, borderRadius:'50%',
+            background: t.color.bgCard, border:`1px solid ${t.color.border}`,
+            color: t.color.text, cursor:'pointer', fontFamily:'inherit',
+            fontSize: 14, lineHeight: 1, padding: 0,
+          }}
+        >×</button>
+      ) : (
+        <span style={{
+          position:'absolute', insetInlineEnd: 14, top:'50%', transform:'translateY(-50%)',
+          color: t.color.silver3, fontSize: 15, pointerEvents:'none',
+        }}>⌕</span>
+      )}
+    </div>
+  )
+}
+
+function SearchResults({ discipline, query, onPick, onClear }) {
+  const results = searchMovements(discipline, query)
+  if (!results.length) {
+    return (
+      <Card>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+          לא נמצא תרגיל בשם "{query}"
+        </div>
+        <div style={{ fontSize: 12, color: t.color.textDim, lineHeight: 1.7 }}>
+          נסה שם באנגלית (למשל "front squat" או "muscle up"), או נקה את החיפוש
+          כדי לעיין ברשימה המלאה.
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClear} style={{ marginTop: 12 }}>
+          נקה חיפוש
+        </Button>
+      </Card>
+    )
+  }
+  return (
+    <div>
+      <div style={{
+        fontFamily: t.font.family.mono, fontSize: 10, letterSpacing:'0.2em',
+        color: t.color.silver2, fontWeight: 700, textTransform:'uppercase', marginBottom: 8,
+      }}>{results.length} תוצאות</div>
+      <div style={{ display:'grid', gap: 8 }}>
+        {results.map(m => (
+          <MovementRow key={m.id} movement={m} onPick={() => onPick(m)} showGroup />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function MovementRow({ movement: m, onPick, showGroup }) {
+  return (
+    <button onClick={onPick} style={{
+      width:'100%', textAlign:'start', fontFamily:'inherit', cursor:'pointer',
+      background: t.color.bgSoft, border: `1px solid ${t.color.border}`,
+      borderRadius: t.radius.md, padding:'13px 16px', color: t.color.text,
+      display:'flex', alignItems:'center', gap: 12, transition: t.transition,
+    }}
+    onMouseEnter={e => { e.currentTarget.style.borderColor = t.color.gold }}
+    onMouseLeave={e => { e.currentTarget.style.borderColor = t.color.border }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: t.color.gold }}>{m.he}</div>
+        <div style={{ fontSize: 11, color: t.color.textDim, marginTop: 2 }}>
+          {m.en}{showGroup && m.groupLabel ? ` · ${m.groupLabel}` : ''}
+        </div>
+      </div>
+      <span style={{ fontSize: 20, color: t.color.gold }}>›</span>
+    </button>
   )
 }
 
