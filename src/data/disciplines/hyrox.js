@@ -2,6 +2,7 @@
 // Race format: 8 × 1km run + 8 workout stations.
 
 import { applyLevelToWod } from './levels'
+import { wodToSession } from './wodToExercises'
 
 const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)]
 
@@ -219,12 +220,7 @@ export function hyroxProgramToPlan(programId) {
       : name === 'Race Sim' ? 'race_sim_mini'
       : 'race_sim_mini'
     const wod = generateHyroxWod({ focus })
-    return {
-      name: `${name} · ${wod.title}`,
-      wodType: 'HYROX',
-      prescription: wod.lines.join('\n'),
-      exercises: [],
-    }
+    return wodToSession(wod, { name: `${name} · ${wod.title}`, wodType: 'HYROX' })
   })
   return {
     name: prog.label,

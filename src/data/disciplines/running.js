@@ -1,6 +1,7 @@
 // Running — multi-variant families with pace targets from user's 5K PB.
 
 import { applyLevelToWod } from './levels'
+import { wodToSession } from './wodToExercises'
 
 function paces(fiveKSec) {
   if (!fiveKSec) return null
@@ -342,12 +343,7 @@ export function runningProgramToPlan(programId, fiveKSec = null) {
       : name === 'Hills' ? 'hills'
       : 'intervals'
     const wod = generateRunningWod({ focus, fiveKSec })
-    return {
-      name: `${name} · ${wod.title}`,
-      wodType: 'Running',
-      prescription: wod.lines.join('\n'),
-      exercises: [],
-    }
+    return wodToSession(wod, { name: `${name} · ${wod.title}`, wodType: 'Running' })
   })
   return {
     name: prog.label,

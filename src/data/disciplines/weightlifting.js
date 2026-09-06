@@ -3,6 +3,7 @@
 // Uses %1RM from profile.oneRMs when available.
 
 import { applyLevelToWod } from './levels'
+import { wodToSession } from './wodToExercises'
 
 const SESSIONS = {
   snatch: {
@@ -225,12 +226,7 @@ export function weightliftingProgramToPlan(programId, oneRMs = {}) {
       : name.includes('Accessory') ? 'power'
       : 'snatch'
     const wod = generateWeightliftingWod({ focus, oneRMs })
-    return {
-      name: `${name} · ${wod.title}`,
-      wodType: 'Weightlifting',
-      prescription: wod.lines.join('\n'),
-      exercises: [],
-    }
+    return wodToSession(wod, { name: `${name} · ${wod.title}`, wodType: 'Weightlifting' })
   })
   return {
     name: prog.label,

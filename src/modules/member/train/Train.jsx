@@ -24,6 +24,7 @@ import { BodybuildingHub } from './bodybuilding/BodybuildingHub'
 import { RunHub } from './RunHub'
 import { useI18n } from '../../../i18n/i18n'
 import { Kicker, SectionHead, Label, StatRow, Button as SButton, WeightDisplay } from '../../../design/components/primitives'
+import { sessionExercises } from '../../../data/disciplines/wodToExercises'
 
 // Landing: 3 big choice cards only — no plan card, no chips, no tabs.
 // Selecting one enters that module and shows its content with a back button.
@@ -507,9 +508,10 @@ function WeeklySchedule({ plan, onOpenSession }) {
 function DayRow({ day, plan, onOpen }) {
  const isWorkout = day.type === 'workout'
  const s = day.session
- // Legacy programs (from data/programs.js) expose exercises as `blocks`;
- // adopted plans expose them as `exercises`. Normalize here.
- const rowExercises = s?.exercises?.length ? s.exercises : (s?.blocks || [])
+ // Handles every era of saved session: adopted plans with `exercises`,
+ // legacy programs with `blocks`, and WOD sessions saved before they carried
+ // either, which are rebuilt from their prescription text.
+ const rowExercises = sessionExercises(s)
  return (
  <div style={{
  display:'grid', gridTemplateColumns:'auto 1fr auto', gap: 12, alignItems:'stretch',
@@ -562,8 +564,16 @@ function DayRow({ day, plan, onOpen }) {
  )
 }
 
-function SessionRunner({ session, onClose, onFinish }) {
+function SessionRunner({ session: rawSession, onClose, onFinish }) {
  const { state } = useApp()
+ // A session saved before WOD sessions carried exercises would open empty.
+ // Rebuilding here means an already-adopted plan starts working without the
+ // user having to adopt it again.
+ const session = React.useMemo(() => {
+   if (!rawSession) return rawSession
+   const ex = sessionExercises(rawSession)
+   return ex === rawSession.exercises ? rawSession : { ...rawSession, exercises: ex }
+ }, [rawSession])
  const [log, setLog] = useState(() => buildInitialLog(session, state.workoutLogs))
  const [restRemaining, setRestRemaining] = useState(0)
  const [restTotal, setRestTotal] = useState(90)

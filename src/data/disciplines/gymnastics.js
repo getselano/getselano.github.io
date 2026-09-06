@@ -3,6 +3,7 @@
 // different workout even for the same focus.
 
 import { applyLevelToWod } from './levels'
+import { wodToSession } from './wodToExercises'
 
 // Multi-variant session families.
 // Each variant is a fully-worked prescription (A/B/C blocks).
@@ -398,12 +399,7 @@ export function gymnasticsProgramToPlan(programId) {
         : name === 'Ladder B' ? 'pulling'
         : 'pulling',
     })
-    return {
-      name: `${name} · ${wod.title}`,
-      wodType: 'Gymnastics',
-      prescription: wod.lines.join('\n'),
-      exercises: [],
-    }
+    return wodToSession(wod, { name: `${name} · ${wod.title}`, wodType: 'Gymnastics' })
   })
   return {
     name: prog.label,
