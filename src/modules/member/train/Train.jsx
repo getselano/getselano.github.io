@@ -25,6 +25,7 @@ import { RunHub } from './RunHub'
 import { useI18n } from '../../../i18n/i18n'
 import { Kicker, SectionHead, Label, StatRow, Button as SButton, WeightDisplay } from '../../../design/components/primitives'
 import { sessionExercises } from '../../../data/disciplines/wodToExercises'
+import { StartCountdown, SessionBar, useSessionClock, useRestTimer, restEndedFeedback, DEFAULT_REST_SEC } from './SessionTiming'
 
 // Landing: 3 big choice cards only — no plan card, no chips, no tabs.
 // Selecting one enters that module and shows its content with a back button.
@@ -575,45 +576,35 @@ function SessionRunner({ session: rawSession, onClose, onFinish }) {
    return ex === rawSession.exercises ? rawSession : { ...rawSession, exercises: ex }
  }, [rawSession])
  const [log, setLog] = useState(() => buildInitialLog(session, state.workoutLogs))
- const [restRemaining, setRestRemaining] = useState(0)
- const [restTotal, setRestTotal] = useState(90)
- const timerRef = React.useRef(null)
+ // Null until the countdown finishes, so opening a workout by accident — or
+ // before you are ready — starts nothing.
+ const [startedAt, setStartedAt] = useState(null)
+ const elapsed = useSessionClock(startedAt)
+ const rest = useRestTimer(restEndedFeedback)
 
  React.useEffect(() => {
  if (session) setLog(buildInitialLog(session, state.workoutLogs))
  }, [session])
 
- React.useEffect(() => {
- if (restRemaining <= 0) return
- timerRef.current = setInterval(() => setRestRemaining(r => r - 1), 1000)
- return () => clearInterval(timerRef.current)
- }, [restRemaining])
+ // A different session means a fresh clock.
+ React.useEffect(() => { setStartedAt(null) }, [session])
 
- const startRest = (seconds = 90) => { setRestTotal(seconds); setRestRemaining(seconds) }
- const skipRest = () => setRestRemaining(0)
+ const startRest = (seconds = DEFAULT_REST_SEC) => rest.start(seconds)
 
  if (!session) return null
 
+ if (!startedAt) {
+ return (
+ <StartCountdown
+ session={session}
+ onStart={() => setStartedAt(Date.now())}
+ onCancel={onClose}
+ />
+ )
+ }
+
  return (
  <Modal open={!!session} onClose={onClose} title={`אימון: ${session.name}`} width={720}>
- {restRemaining > 0 && (
- <div style={{
- position:'sticky', top: 0, zIndex: 10, marginBottom: 12, padding: 14,
- background:`linear-gradient(90deg, ${t.color.gold}22 0%, ${t.color.gold}44 ${100 - (restRemaining/restTotal)*100}%, ${t.color.bgSoft} ${100 - (restRemaining/restTotal)*100}%)`,
- border:`1px solid ${t.color.gold}`, borderRadius: t.radius.md,
- display:'flex', alignItems:'center', gap: 12,
- }}>
- <div style={{ fontSize: 24 }}>⏱️</div>
- <div style={{ flex: 1 }}>
- <div style={{ fontSize: t.font.xs, color: t.color.textDim }}>מנוחה</div>
- <div style={{ fontSize: t.font.xxl, fontWeight: 800, color: t.color.gold, fontFamily:'Space Mono, monospace'}}>
- {Math.floor(restRemaining/60)}:{String(restRemaining%60).padStart(2,'0')}
- </div>
- </div>
- <Button variant="ghost"size="sm"onClick={skipRest}>דלג</Button>
- </div>
- )}
-
  {/* Explainer for advanced techniques */}
  {(log.some(e => e.supersetWith) || log.some(e => e.dropSetOnLast) || log.some(e => e.restPause)) && (
  <div style={{
@@ -728,10 +719,27 @@ function SessionRunner({ session: rawSession, onClose, onFinish }) {
  </div>
  <div style={{ display:'flex', gap: 10, justifyContent:'flex-end', marginTop: 20 }}>
  <Button variant="ghost"onClick={onClose}>בטל</Button>
- <Button onClick={() => onFinish({ sessionName: session.name, exercises: log })}>סיים ורשום </Button>
+ <Button onClick={finish}>סיים ורשום </Button>
  </div>
+
+ {/* Clears the fixed bar so it never covers the last exercise or the
+ buttons above — the bar is out of flow and would otherwise overlap. */}
+ <div style={{ height: 92 }} />
+
+ <SessionBar elapsed={elapsed} rest={rest} onFinish={finish} />
  </Modal>
  )
+
+ function finish() {
+ // The measured duration goes into the log, so a session is comparable to
+ // the same session last week rather than being just a date.
+ onFinish({
+ sessionName: session.name,
+ exercises: log,
+ durationSec: elapsed,
+ startedAt: new Date(startedAt).toISOString(),
+ })
+ }
 
  function updateSet(i, j, key, val) {
  setLog(l => l.map((ex, ii) => ii !== i ? ex : { ...ex, sets: ex.sets.map((s, jj) => jj !== j ? s : { ...s, [key]: val }) }))
