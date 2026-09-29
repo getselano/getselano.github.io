@@ -240,6 +240,24 @@ export class SupabaseServiceRepo implements ServiceRepo {
     return { id, created }
   }
 
+  async autoAssign(participantId: string) {
+    const [p, staff] = await Promise.all([
+      this.db.from('participants').select('coach_id, nutritionist_id').eq('id', participantId).single().then(must<{ coach_id: string | null; nutritionist_id: string | null }>),
+      this.staff(),
+    ])
+    const only = (role: Staff['role']) => {
+      const list = staff.filter((x) => x.role === role)
+      return list.length === 1 ? list[0] : null
+    }
+    const patch: Record<string, string> = {}
+    if (!p.coach_id && only('coach')) patch.coach_id = only('coach')!.id
+    if (!p.nutritionist_id && only('nutritionist')) patch.nutritionist_id = only('nutritionist')!.id
+    if (Object.keys(patch).length) must(await this.db.from('participants').update(patch).eq('id', participantId))
+    const coachId = patch.coach_id ?? p.coach_id
+    const nutriId = patch.nutritionist_id ?? p.nutritionist_id
+    return { coach: staff.find((x) => x.id === coachId) ?? null, nutritionist: staff.find((x) => x.id === nutriId) ?? null }
+  }
+
   async claimNotification(kind: string, recipient: string, day: string) {
     const r = await this.db.from('notifications_log').insert({ kind, recipient, sent_on: day, status: 'sending' })
     if (r.error?.code === '23505') return false

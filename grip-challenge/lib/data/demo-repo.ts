@@ -259,6 +259,19 @@ export class DemoServiceRepo implements ServiceRepo {
     return { id: p.id, created }
   }
 
+  async autoAssign(participantId: string) {
+    const s = store()
+    const p = s.participants.find((x) => x.id === participantId)
+    if (!p) return { coach: null, nutritionist: null }
+    const only = (role: Staff['role']) => {
+      const list = s.staff.filter((x) => x.role === role)
+      return list.length === 1 ? list[0] : null
+    }
+    if (!p.coach_id) p.coach_id = only('coach')?.id ?? null
+    if (!p.nutritionist_id) p.nutritionist_id = only('nutritionist')?.id ?? null
+    return { coach: s.staff.find((x) => x.id === p.coach_id) ?? null, nutritionist: s.staff.find((x) => x.id === p.nutritionist_id) ?? null }
+  }
+
   async claimNotification(kind: string, recipient: string, day: string) {
     const s = store()
     if (s.notifications.some((n) => n.kind === kind && n.recipient === recipient && n.sent_on === day)) return false

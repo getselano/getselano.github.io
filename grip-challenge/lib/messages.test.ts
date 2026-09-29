@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { snapshot } from './calc'
 import { addDays } from './dates'
-import { dailyReminder, staffSummary, weeklySummary, welcomeMessage } from './messages'
+import { adminNewParticipant, dailyReminder, staffNewParticipant, staffSummary, weeklySummary, welcomeMessage } from './messages'
 import type { DailyLog, Participant } from './types'
 
 const START = '2026-09-06' // Sunday
@@ -37,5 +37,18 @@ describe('messages', () => {
     expect(m.text).toContain('מתחיל ב-4.10.2026')
     expect(m.text).toContain('https://grip-challenge.netlify.app')
     expect(welcomeMessage({ full_name: 'רונית', start_date: '2026-09-29' }, 'u', '2026-09-29').text).toContain('מתחיל היום')
+  })
+  it('briefs the nutritionist and the mental coach with their own next step', () => {
+    const p = { full_name: 'רונית לוי', phone: '972501234567', start_date: '2026-10-04', price: 2500 }
+    const tal = staffNewParticipant('nutritionist', 'טל', p, 'https://x/team/1').text
+    expect(tal).toContain('היי טל, הצטרפות חדשה לאתגר: רונית לוי (050-123-4567)')
+    expect(tal).toContain('שיחת קליטה בזום')
+    expect(tal).toContain('https://x/team/1')
+    expect(staffNewParticipant('coach', 'לואיזה', p, 'l').text).toContain('שיחת היכרות קצרה')
+  })
+  it('tells admins who joined and whether they were assigned', () => {
+    const p = { full_name: 'רונית לוי', phone: '972501234567', start_date: '2026-10-04', price: 2500 }
+    expect(adminNewParticipant('אביב', p, { nutritionist: 'טל', coach: 'לואיזה' }, 'l').text).toContain('שובץ/ה ל: טל (תזונה), לואיזה')
+    expect(adminNewParticipant('אביב', p, { nutritionist: null, coach: 'לואיזה' }, 'https://x/admin/1').text).toContain('ממתין/ה לשיבוץ צוות: https://x/admin/1')
   })
 })

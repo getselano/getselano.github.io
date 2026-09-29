@@ -8,7 +8,7 @@ import { normalizePhone } from '@/lib/phone'
 import { PRICE_DEFAULT } from '@/lib/program'
 import type { ParticipantStatus, StaffRole } from '@/lib/types'
 import type { FormState } from '../actions'
-import { sendWelcome } from '@/lib/welcome'
+import { briefAssignedStaff, onNewParticipant } from '@/lib/welcome'
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 
@@ -48,9 +48,17 @@ export async function saveParticipantAction(_: FormState, form: FormData): Promi
     console.error(e)
     return { error: friendly(e) }
   }
+  const appUrl = process.env.URL || `https://${(await headers()).get('host')}`
+  if (id && status === 'active') {
+    // An edit that assigns or changes staff briefs whoever is assigned now.
+    const staff = await (await userRepo()).staff()
+    const coach = staff.find((x) => x.id === form.get('coach_id')) ?? null
+    const nutritionist = staff.find((x) => x.id === form.get('nutritionist_id')) ?? null
+    await briefAssignedStaff({ id, full_name, phone, start_date, price: Number(form.get('price') || PRICE_DEFAULT) }, { coach, nutritionist }, appUrl)
+  }
   if (!id && status === 'active') {
-    const host = (await headers()).get('host')
-    await sendWelcome({ id: newId, full_name, phone, start_date }, process.env.URL || `https://${host}`)
+    // The admin is creating them, so no admin summary; the team is briefed.
+    await onNewParticipant({ id: newId, full_name, phone, start_date, price: Number(form.get('price') || PRICE_DEFAULT) }, appUrl, { notifyAdmins: false })
   }
   revalidatePath('/', 'layout')
   if (!id) redirect(`/admin/participants/${newId}`)

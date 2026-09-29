@@ -72,6 +72,11 @@ export interface ServiceRepo {
    * been logged yet.
    */
   recordSignup(input: SignupInput): Promise<{ id: string; created: boolean }>
+  /**
+   * Fills an empty coach / nutritionist slot when the team has exactly one
+   * person in that role. Returns who is assigned afterwards.
+   */
+  autoAssign(participantId: string): Promise<{ coach: Staff | null; nutritionist: Staff | null }>
   /** Records a send; false if this (kind, recipient, day) was already sent. */
   claimNotification(kind: string, recipient: string, day: ISODate): Promise<boolean>
   finishNotification(kind: string, recipient: string, day: ISODate, status: string, detail?: string): Promise<void>

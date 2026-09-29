@@ -7,7 +7,8 @@ import { parseBool, parseDate, parseNum } from '@/lib/intake'
 import { normalizePhone } from '@/lib/phone'
 import { bearer, secretMatches } from '@/lib/secret'
 import { todayIL } from '@/lib/dates'
-import { appUrlFrom, sendWelcome } from '@/lib/welcome'
+import { PRICE_DEFAULT } from '@/lib/program'
+import { appUrlFrom, onNewParticipant } from '@/lib/welcome'
 
 const str = (v: unknown) => {
   const s = String(v ?? '').trim()
@@ -53,9 +54,13 @@ export async function POST(req: Request) {
       agreement_url: str(b.agreementUrl),
     },
   })
-  // A new participant gets the welcome WhatsApp right away (once, ever).
-  const welcome = result.created
-    ? await sendWelcome({ id: result.id, full_name, phone, start_date: start_date ?? todayIL() }, appUrlFrom(req))
-    : 'not_new'
-  return NextResponse.json({ ...result, welcome }, { status: result.created ? 201 : 200 })
+  // A new participant: auto-assign, welcome them, brief their team and the admins.
+  const messages = result.created
+    ? await onNewParticipant(
+        { id: result.id, full_name, phone, start_date: start_date ?? todayIL(), price: price && price >= 100 ? Math.round(price) : PRICE_DEFAULT },
+        appUrlFrom(req),
+        { notifyAdmins: true },
+      )
+    : {}
+  return NextResponse.json({ ...result, messages }, { status: result.created ? 201 : 200 })
 }
