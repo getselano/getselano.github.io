@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { snapshot } from './calc'
 import { addDays } from './dates'
-import { dailyReminder, staffSummary, weeklySummary } from './messages'
+import { dailyReminder, staffSummary, weeklySummary, welcomeMessage } from './messages'
 import type { DailyLog, Participant } from './types'
 
 const START = '2026-09-06' // Sunday
@@ -30,5 +30,12 @@ describe('messages', () => {
     const green = row('גיל', Array.from({ length: 17 }, (_, i) => i + 1))
     const m = staffSummary('רון', [red, green])
     expect(m.text).toContain('לשיחה השבוע: מאיה')
+  })
+  it('welcome message has the app link and the start date', () => {
+    const m = welcomeMessage({ full_name: 'רונית לוי', start_date: '2026-10-04' }, 'https://grip-challenge.netlify.app', '2026-09-29')
+    expect(m.text).toContain('היי רונית')
+    expect(m.text).toContain('מתחיל ב-4.10.2026')
+    expect(m.text).toContain('https://grip-challenge.netlify.app')
+    expect(welcomeMessage({ full_name: 'רונית', start_date: '2026-09-29' }, 'u', '2026-09-29').text).toContain('מתחיל היום')
   })
 })

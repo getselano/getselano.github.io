@@ -1,5 +1,6 @@
 'use server'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { requireRole, userRepo } from '@/lib/data'
 import { todayIL } from '@/lib/dates'
@@ -7,6 +8,7 @@ import { normalizePhone } from '@/lib/phone'
 import { PRICE_DEFAULT } from '@/lib/program'
 import type { ParticipantStatus, StaffRole } from '@/lib/types'
 import type { FormState } from '../actions'
+import { sendWelcome } from '@/lib/welcome'
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 
@@ -25,6 +27,7 @@ export async function saveParticipantAction(_: FormState, form: FormData): Promi
   if (!full_name) return { error: 'חסר שם' }
   if (!phone) return { error: 'מספר טלפון לא תקין' }
   if (!ISO.test(start_date)) return { error: 'תאריך התחלה לא תקין' }
+  const status = String(form.get('status') || 'active') as ParticipantStatus
   let newId: string
   try {
     newId = await (await userRepo()).saveParticipant(
@@ -36,7 +39,7 @@ export async function saveParticipantAction(_: FormState, form: FormData): Promi
         price: Number(form.get('price') || PRICE_DEFAULT),
         coach_id: String(form.get('coach_id') || '') || null,
         nutritionist_id: String(form.get('nutritionist_id') || '') || null,
-        status: (String(form.get('status') || 'active') as ParticipantStatus),
+        status,
         marketing_consent: form.get('marketing_consent') === 'on',
       },
       id,
@@ -44,6 +47,10 @@ export async function saveParticipantAction(_: FormState, form: FormData): Promi
   } catch (e) {
     console.error(e)
     return { error: friendly(e) }
+  }
+  if (!id && status === 'active') {
+    const host = (await headers()).get('host')
+    await sendWelcome({ id: newId, full_name, phone, start_date }, process.env.URL || `https://${host}`)
   }
   revalidatePath('/', 'layout')
   if (!id) redirect(`/admin/participants/${newId}`)

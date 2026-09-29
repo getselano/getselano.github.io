@@ -6,6 +6,8 @@ import { serviceRepo } from '@/lib/data'
 import { parseBool, parseDate, parseNum } from '@/lib/intake'
 import { normalizePhone } from '@/lib/phone'
 import { bearer, secretMatches } from '@/lib/secret'
+import { todayIL } from '@/lib/dates'
+import { appUrlFrom, sendWelcome } from '@/lib/welcome'
 
 const str = (v: unknown) => {
   const s = String(v ?? '').trim()
@@ -27,11 +29,12 @@ export async function POST(req: Request) {
 
   const price = parseNum(b.price)
   const photo = parseBool(b.photoConsent)
+  const start_date = parseDate(b.startDate ?? b.start_date) ?? undefined
   const result = await serviceRepo().recordSignup({
     full_name,
     phone,
     email: str(b.email),
-    start_date: parseDate(b.startDate ?? b.start_date) ?? undefined,
+    start_date,
     price: price && price >= 100 ? Math.round(price) : undefined,
     marketing_consent: photo,
     deal: {
@@ -50,5 +53,9 @@ export async function POST(req: Request) {
       agreement_url: str(b.agreementUrl),
     },
   })
-  return NextResponse.json(result, { status: result.created ? 201 : 200 })
+  // A new participant gets the welcome WhatsApp right away (once, ever).
+  const welcome = result.created
+    ? await sendWelcome({ id: result.id, full_name, phone, start_date: start_date ?? todayIL() }, appUrlFrom(req))
+    : 'not_new'
+  return NextResponse.json({ ...result, welcome }, { status: result.created ? 201 : 200 })
 }

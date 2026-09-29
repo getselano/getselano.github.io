@@ -6,7 +6,7 @@ import type { Row } from './data'
 import { REWARD_DAYS } from './program'
 
 export interface Message {
-  template: 'daily_reminder' | 'weekly_summary' | 'staff_summary'
+  template: 'daily_reminder' | 'weekly_summary' | 'staff_summary' | 'welcome'
   params: string[]
   text: string
 }
@@ -60,4 +60,25 @@ export function staffSummary(staffName: string, rows: Row[]): Message {
     params: [staffName, counts, names],
     text: `היי ${staffName}, ${counts} ${names}`,
   }
+}
+
+/** Sent once, the moment a participant is created (signing system or admin). */
+export function welcomeMessage(p: { full_name: string; start_date: string }, appUrl: string, today: string): Message {
+  const name = p.full_name.split(' ')[0]
+  const [y, m, d] = p.start_date.split('-')
+  const start = p.start_date <= today ? 'היום' : `ב-${Number(d)}.${Number(m)}.${y}`
+  const text = [
+    `היי ${name}, ברוכים הבאים לאתגר 6 השבועות של גריפ!`,
+    '',
+    `האתגר שלך מתחיל ${start}. מהיום יש לך אפליקציה אישית למעקב:`,
+    appUrl,
+    '',
+    'נכנסים עם מספר הטלפון הזה, מקבלים קוד כאן בוואטסאפ, וזהו. בלי סיסמה.',
+    'כדאי להוסיף אותה למסך הבית של הטלפון.',
+    '',
+    'כל יום: נגיעה אחת כדי לסמן שדיווחת לתזונאי/ת. 36 ימים מסומנים = אימון אישי מתנה.',
+    '',
+    'השלב הבא: שיחת קליטה עם התזונאי/ת, שבה נקבע יחד את היעד שלך.',
+  ].join('\n')
+  return { template: 'welcome', params: [name, start, appUrl], text }
 }
