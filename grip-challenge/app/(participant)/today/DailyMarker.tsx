@@ -45,6 +45,23 @@ function writePending(list: Pending[]) {
   } catch {}
 }
 
+/**
+ * Online but the call failed: usually this page is from a build that was
+ * just replaced, so its server action no longer exists. Reload (at most once
+ * a minute) and the pending tap is replayed by the new version.
+ */
+function reloadOnce(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem('grip_reloaded_at') || 0)
+    if (Date.now() - last < 60_000) return false
+    sessionStorage.setItem('grip_reloaded_at', String(Date.now()))
+  } catch {
+    return false
+  }
+  window.location.reload()
+  return true
+}
+
 const LABELS: Record<MarkField, string> = {
   nutrition_logged: 'דיווח תזונה',
   workout_attended: 'הגעה לאימון',
@@ -122,6 +139,7 @@ export function DailyMarker(props: Props) {
     startTransition(async () => {
       if (!(await send(p))) {
         writePending([...readPending().filter((x) => !(x.date === p.date && x.field === p.field)), p])
+        if (navigator.onLine && reloadOnce()) return // a new version was deployed: reload, the tap replays on load
         setOffline(true)
       }
     })
@@ -158,7 +176,7 @@ export function DailyMarker(props: Props) {
               on={marks.workout_attended}
               icon={<Dumbbell size={26} />}
               title="הגעתי לאימון"
-              sub={marks.workout_attended ? (props.workoutConfirmed ? 'ההגעה אושרה' : 'נרשם. ממתין לאישור.') : props.workoutHint || (props.show.workoutOptional ? 'רק בימים שהתאמנת' : 'יש אימון היום')}
+              sub={marks.workout_attended ? (props.workoutConfirmed ? 'נספר לאימונים שלך. המאמן/ת אישר/ה.' : 'נספר לאימונים שלך.') : props.workoutHint || (props.show.workoutOptional ? 'רק בימים שהתאמנת' : 'יש אימון היום')}
               onTap={() => toggle('workout_attended')}
             />
           ) : (
