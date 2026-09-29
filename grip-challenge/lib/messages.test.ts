@@ -17,7 +17,7 @@ describe('messages', () => {
   it('daily reminder leads with the streak', () => {
     const m = dailyReminder(row('דנה כהן', Array.from({ length: 16 }, (_, i) => i + 1)))
     expect(m.params[0]).toBe('דנה')
-    expect(m.text).toContain('הרצף שלך על 16 ימים')
+    expect(m.text).toContain('16 ימים של עבודה עומדים על הקו')
   })
   it('weekly summary compares with the same person last week only', () => {
     // Last week (days 8–14): 4 marked. This week so far (15–17): 3.

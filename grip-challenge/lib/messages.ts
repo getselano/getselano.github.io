@@ -19,8 +19,8 @@ export function dailyReminder(r: Row): Message {
   const s = r.snap
   const line =
     s.currentStreak > 0
-      ? `הרצף שלך על ${s.currentStreak} ימים. סימון אחד שומר עליו.`
-      : `עוד ${s.rewardRemaining} ימים מסומנים לאימון האישי.`
+      ? `${s.currentStreak} ימים של עבודה עומדים על הקו. סימון אחד שומר עליהם.`
+      : `הגרסה החדשה שלך נבנית יום אחרי יום. הסימון של היום מחכה.`
   return {
     template: 'daily_reminder',
     params: [name, line],

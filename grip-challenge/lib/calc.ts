@@ -459,26 +459,26 @@ function projectGoal(logs: DailyLog[], start: ISODate, goal: Goal | null, over: 
 // ─── Encouragement (one dynamic sentence) ────────────────────────────
 
 export function encouragement(s: Pick<Snapshot, 'rewardDays' | 'rewardRemaining' | 'currentStreak' | 'longestStreak' | 'loggedToday' | 'week' | 'status' | 'dayNumber' | 'daysSinceLog'>): string {
-  if (s.rewardRemaining === 0) return 'עשית את זה. האימון האישי שלך מחכה.'
-  if (s.rewardRemaining <= 5) return `עוד ${s.rewardRemaining} ימים מסומנים והאימון האישי שלך.`
-  if (s.daysSinceLog >= 2) return 'כל יום הוא התחלה חדשה. סימון אחד היום מחזיר אותך למסלול.'
+  if (s.rewardRemaining === 0) return 'עשית את זה. 36 ימים של התחייבות, והאימון האישי שלך מחכה.'
+  if (s.rewardRemaining <= 5) return `עוד ${s.rewardRemaining} ימים. קו הסיום כבר באופק, לא עוצרים עכשיו.`
+  if (s.daysSinceLog >= 2) return 'מה שבנית לא נמחק. סימון אחד היום מחזיר אותך למסלול.'
   if (s.currentStreak >= 3 && s.currentStreak === s.longestStreak && s.loggedToday)
-    return `${s.currentStreak} ימים — זה השיא שלך. מחר הוא שיא חדש.`
-  if (!s.loggedToday && s.currentStreak > 0) return `הרצף שלך על ${s.currentStreak}. סימון אחד היום שומר עליו.`
+    return `${s.currentStreak} ימים. זה השיא שלך, ומחר שוברים אותו שוב.`
+  if (!s.loggedToday && s.currentStreak > 0) return `${s.currentStreak} ימים של עבודה עומדים על הקו. סימון אחד היום שומר עליהם.`
   if (s.dayNumber <= 3) return s.loggedToday ? 'עשית את הצעד הראשון בדרך לגרסה החדשה שלך. לא חוזרים אחורה.' : 'הצעד הראשון בדרך לגרסה החדשה שלך מתחיל בסימון אחד. לא חוזרים אחורה.'
-  if (s.status.reasons.some((r) => r.code === 'behind_workouts')) return 'אימון אחד השבוע מחזיר אותך לקצב.'
+  if (s.status.reasons.some((r) => r.code === 'behind_workouts')) return 'הגוף מחכה לאימון הבא. אימון אחד השבוע מחזיר אותך לקצב.'
   if (s.week.thisWeek > s.week.lastWeek && s.dayNumber > 7)
-    return `השבוע כבר ${s.week.thisWeek} ימים מסומנים, יותר מכל השבוע שעבר.`
-  return `יום ${s.dayNumber}. עוד ${s.rewardRemaining} ימים מסומנים לאימון האישי.`
+    return `השבוע כבר ${s.week.thisWeek} ימים מסומנים, יותר מכל השבוע שעבר. ככה נבנית גרסה חדשה.`
+  return `יום ${s.dayNumber}. כל סימון מקרב אותך לגרסה החדשה שלך. עוד ${s.rewardRemaining} לאימון האישי.`
 }
 
 /** Short track estimate for the bottom of the progress screen. */
 export function trajectoryText(s: Snapshot): string {
-  if (s.finished) return s.rewardEligible ? 'התוכנית הושלמה, והאימון האישי שלך.' : 'התוכנית הושלמה.'
-  if (s.rewardEligible) return 'האימון האישי כבר שלך. עכשיו היעד.'
-  if (s.forecast.likelyReward) return `בקצב הזה: ${s.forecast.projectedRewardDays} ימים מסומנים ביום 42. על המסלול.`
+  if (s.finished) return s.rewardEligible ? 'סיימת 42 ימים, והאימון האישי שלך. זו כבר גרסה חדשה.' : 'סיימת 42 ימים. מה שבנית כאן נשאר איתך.'
+  if (s.rewardEligible) return 'האימון האישי כבר שלך. עכשיו הולכים על היעד.'
+  if (s.forecast.likelyReward) return `בקצב הזה: ${s.forecast.projectedRewardDays} ימים מסומנים ביום 42. על המסלול, ממשיכים.`
   const need = REWARD_DAYS - s.rewardDays
-  return `צריך ${need} ימים מסומנים מתוך ${s.daysLeft + (s.loggedToday ? 0 : 1)} שנותרו.`
+  return `צריך ${need} ימים מסומנים מתוך ${s.daysLeft + (s.loggedToday ? 0 : 1)} שנותרו. זה עדיין בידיים שלך.`
 }
 
 // ─── Snapshot: the one call screens make ─────────────────────────────
