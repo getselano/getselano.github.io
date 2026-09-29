@@ -15,6 +15,9 @@ export default async function AdminDashboard() {
   const [rows, staff] = await Promise.all([loadRows(), (await userRepo()).staff()])
   const d = dashboard(rows)
   const name = (id: string | null) => staff.find((s) => s.id === id)?.full_name ?? 'לא שובץ'
+  const unassigned = rows.filter(
+    (r) => r.bundle.participant.status === 'active' && !r.snap.finished && (!r.bundle.participant.coach_id || !r.bundle.participant.nutritionist_id),
+  )
   const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : 0)
 
   return (
@@ -25,6 +28,20 @@ export default async function AdminDashboard() {
           <h1>דשבורד</h1>
         </div>
       </header>
+
+      {unassigned.length > 0 && (
+        <section className="card soft-orange banner" aria-label="ממתינים לשיבוץ">
+          <Alert size={22} style={{ color: 'var(--streak-deep)' }} />
+          <div>
+            <strong>{unassigned.length === 1 ? 'משתתף אחד ממתין לשיבוץ צוות' : `${unassigned.length} משתתפים ממתינים לשיבוץ צוות`}</strong>
+            <p className="small" style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {unassigned.map((r) => (
+                <Link key={r.bundle.participant.id} href={`/admin/participants/${r.bundle.participant.id}`} className="link">{r.bundle.participant.full_name}</Link>
+              ))}
+            </p>
+          </div>
+        </section>
+      )}
 
       <div className="grid4">
         <Kpi label="משתתפים פעילים" value={d.active} />

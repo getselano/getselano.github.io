@@ -157,8 +157,8 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
             </div>
           </section>
 
-          <section className="card">
-            <div className="card-title"><h2>היעד</h2></div>
+          <section className="card" id="goal" style={g ? undefined : { border: '1.5px solid var(--streak)' }}>
+            <div className="card-title"><h2>היעד</h2>{!g && <span className="pill orange">חסר יעד</span>}</div>
             {canEditGoal ? (
               <ActionForm action={saveGoalAction} submit="שמירת יעד">
                 <input type="hidden" name="participant_id" value={p.id} />

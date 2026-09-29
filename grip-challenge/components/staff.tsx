@@ -35,6 +35,7 @@ export function ParticipantRow({ r }: { r: Row }) {
         <span className="name">
           {p.full_name}
           <span className="hint">יום <span className="num">{r.snap.dayNumber}</span></span>
+          {!r.bundle.goal && <span className="pill orange">חסר יעד</span>}
         </span>
         <span className="why" style={{ color: c === 'green' ? 'var(--ink-2)' : color, display: 'block' }}>
           {why}
