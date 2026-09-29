@@ -116,7 +116,13 @@ export function staffNewParticipant(role: 'nutritionist' | 'coach', staffName: s
 }
 
 /** To each admin: who joined, for how much, and who they were assigned to. */
-export function adminNewParticipant(adminName: string, p: NewParticipantInfo, assigned: { nutritionist: string | null; coach: string | null }, link: string): Message {
+export function adminNewParticipant(
+  adminName: string,
+  p: NewParticipantInfo,
+  assigned: { nutritionist: string | null; coach: string | null },
+  link: string,
+  phoneBelongsTo: string | null = null,
+): Message {
   const assignedLine =
     assigned.nutritionist && assigned.coach
       ? `שובץ/ה ל: ${assigned.nutritionist} (תזונה), ${assigned.coach} (מאמן/ת מנטלי/ת)`
@@ -125,6 +131,9 @@ export function adminNewParticipant(adminName: string, p: NewParticipantInfo, as
     `היי ${adminName.split(' ')[0]}, הצטרפות חדשה: ${p.full_name} · ${p.price.toLocaleString('he-IL')} ₪`,
     `תחילת האתגר: ${dmy(p.start_date)}`,
     assignedLine,
+    ...(phoneBelongsTo
+      ? ['', `⚠️ הטלפון שנרשם בהסכם (${localPhone(p.phone)}) הוא של ${phoneBelongsTo}, כנראה טעות בהקלדה. לא נשלחה הודעת ברוכים הבאים. לתקן את המספר כאן, וההודעה תישלח למספר הנכון: ${link}`]
+      : []),
   ].join('\n')
   return { template: 'admin_new', params: [adminName, p.full_name, String(p.price)], text }
 }

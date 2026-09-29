@@ -51,4 +51,10 @@ describe('messages', () => {
     expect(adminNewParticipant('אביב', p, { nutritionist: 'טל', coach: 'לואיזה' }, 'l').text).toContain('שובץ/ה ל: טל (תזונה), לואיזה')
     expect(adminNewParticipant('אביב', p, { nutritionist: null, coach: 'לואיזה' }, 'https://x/admin/1').text).toContain('ממתין/ה לשיבוץ צוות: https://x/admin/1')
   })
+  it('warns admins when the signed phone belongs to a staff member', () => {
+    const p = { full_name: 'גלעד', phone: '972544510185', start_date: '2026-09-30', price: 3500 }
+    const m = adminNewParticipant('הדר', p, { nutritionist: 'טל', coach: 'לואיזה' }, 'https://x/admin/1', 'אביב').text
+    expect(m).toContain('⚠️ הטלפון שנרשם בהסכם (054-451-0185) הוא של אביב')
+    expect(adminNewParticipant('הדר', p, { nutritionist: 'טל', coach: 'לואיזה' }, 'l').text).not.toContain('⚠️')
+  })
 })

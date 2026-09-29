@@ -45,22 +45,53 @@ export async function onNewParticipant(p: NewParticipant, appUrl: string, opts: 
   }
 
   const card = `${appUrl}/team/${p.id}`
-  await send('welcome', p.id, p.phone, welcomeMessage(p, appUrl, todayIL()))
+  const staffList = await repo.staff().catch(() => [] as Staff[])
+  // A participant registered with a staff member's phone is almost always a
+  // typo (or autofill) in the signing form. Tell the admins instead of
+  // welcoming the staff member.
+  const staffOwner = staffList.find((x) => x.phone === p.phone)
+  if (!staffOwner) await send('welcome', `${p.id}:${p.phone}`, p.phone, welcomeMessage(p, appUrl, todayIL()))
   if (assigned.nutritionist)
     await send('staff_new', `${assigned.nutritionist.id}:${p.id}`, assigned.nutritionist.phone, staffNewParticipant('nutritionist', assigned.nutritionist.full_name, p, card))
   if (assigned.coach)
     await send('staff_new', `${assigned.coach.id}:${p.id}`, assigned.coach.phone, staffNewParticipant('coach', assigned.coach.full_name, p, card))
   if (opts.notifyAdmins) {
-    const admins = (await repo.staff()).filter((s) => s.role === 'admin')
+    const admins = staffList.filter((s) => s.role === 'admin')
     for (const a of admins)
       await send(
         'admin_new',
         `${a.id}:${p.id}`,
         a.phone,
-        adminNewParticipant(a.full_name, p, { nutritionist: assigned.nutritionist?.full_name ?? null, coach: assigned.coach?.full_name ?? null }, `${appUrl}/admin/participants/${p.id}`),
+        adminNewParticipant(
+          a.full_name,
+          p,
+          { nutritionist: assigned.nutritionist?.full_name ?? null, coach: assigned.coach?.full_name ?? null },
+          `${appUrl}/admin/participants/${p.id}`,
+          staffOwner?.full_name ?? null,
+        ),
       )
   }
   return out
+}
+
+/**
+ * The welcome message for a participant's current phone. Keyed on the phone,
+ * so fixing a wrong number in the admin screen welcomes the right person,
+ * while saving again with the same number sends nothing.
+ */
+export async function sendWelcome(p: NewParticipant, appUrl: string) {
+  const repo = serviceRepo()
+  try {
+    if ((await repo.staff()).some((x) => x.phone === p.phone)) return 'staff_phone'
+    const key = `${p.id}:${p.phone}`
+    if (!(await repo.claimNotification('welcome', key, p.start_date))) return 'already_sent'
+    const r = await sendWhatsApp(p.phone, welcomeMessage(p, appUrl, todayIL()).text)
+    await repo.finishNotification('welcome', key, p.start_date, r.status, r.detail)
+    return r.status
+  } catch (e) {
+    console.error('welcome message failed', e)
+    return 'failed'
+  }
 }
 
 /**

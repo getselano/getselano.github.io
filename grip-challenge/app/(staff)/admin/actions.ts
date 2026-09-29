@@ -8,7 +8,7 @@ import { normalizePhone } from '@/lib/phone'
 import { PRICE_DEFAULT } from '@/lib/program'
 import type { ParticipantStatus, StaffRole } from '@/lib/types'
 import type { FormState } from '../actions'
-import { briefAssignedStaff, onNewParticipant } from '@/lib/welcome'
+import { briefAssignedStaff, onNewParticipant, sendWelcome } from '@/lib/welcome'
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 
@@ -54,7 +54,10 @@ export async function saveParticipantAction(_: FormState, form: FormData): Promi
     const staff = await (await userRepo()).staff()
     const coach = staff.find((x) => x.id === form.get('coach_id')) ?? null
     const nutritionist = staff.find((x) => x.id === form.get('nutritionist_id')) ?? null
-    await briefAssignedStaff({ id, full_name, phone, start_date, price: Number(form.get('price') || PRICE_DEFAULT) }, { coach, nutritionist }, appUrl)
+    const p = { id, full_name, phone, start_date, price: Number(form.get('price') || PRICE_DEFAULT) }
+    await briefAssignedStaff(p, { coach, nutritionist }, appUrl)
+    // A corrected phone number gets the welcome it never received.
+    await sendWelcome(p, appUrl)
   }
   if (!id && status === 'active') {
     // The admin is creating them, so no admin summary; the team is briefed.
