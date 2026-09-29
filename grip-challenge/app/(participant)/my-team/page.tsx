@@ -24,7 +24,7 @@ export default async function MyTeamPage() {
         </div>
       </header>
 
-      {coach && <Person s={coach} role="מאמן/ת הצלחה" note="שיחה שבועית, אימונים ונוכחות" hello={`היי ${coach.full_name}, זה ${first} מאתגר 6 השבועות`} />}
+      {coach && <Person s={coach} role="מאמן/ת מנטלי/ת" note="שיחה שבועית, אימונים ונוכחות" hello={`היי ${coach.full_name}, זה ${first} מאתגר 6 השבועות`} />}
       {nutri && <Person s={nutri} role="תזונאי/ת" note="התפריט, הדיווח היומי והיעד" hello={`היי ${nutri.full_name}, זה ${first} מאתגר 6 השבועות`} />}
       {!coach && !nutri && <div className="card muted">הצוות שלך ישובץ בימים הקרובים.</div>}
 

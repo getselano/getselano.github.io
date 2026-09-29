@@ -259,7 +259,7 @@ export function conditions(input: {
       met: nutrition >= NUTRITION_REQUIRED_DAYS,
     },
     { key: 'measurements', label: 'מדידה שבועית', value: measurements, target: PROGRAM_WEEKS, expectedByNow: weeksDone, met: measurements >= PROGRAM_WEEKS },
-    { key: 'calls', label: 'שיחת מאמן/ת הצלחה', value: callWeeks, target: PROGRAM_WEEKS, expectedByNow: weeksDone, met: callWeeks >= PROGRAM_WEEKS },
+    { key: 'calls', label: 'שיחת מאמן/ת מנטלי/ת', value: callWeeks, target: PROGRAM_WEEKS, expectedByNow: weeksDone, met: callWeeks >= PROGRAM_WEEKS },
   ]
 }
 
