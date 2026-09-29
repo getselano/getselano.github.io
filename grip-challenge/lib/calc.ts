@@ -465,10 +465,10 @@ export function encouragement(s: Pick<Snapshot, 'rewardDays' | 'rewardRemaining'
   if (s.currentStreak >= 3 && s.currentStreak === s.longestStreak && s.loggedToday)
     return `${s.currentStreak} ימים — זה השיא שלך. מחר הוא שיא חדש.`
   if (!s.loggedToday && s.currentStreak > 0) return `הרצף שלך על ${s.currentStreak}. סימון אחד היום שומר עליו.`
+  if (s.dayNumber <= 3) return s.loggedToday ? 'ההתחלה היא החלק הקשה, והיא כבר מאחוריך.' : 'יום אחרי יום. הסימון הראשון מתחיל את הרצף.'
   if (s.status.reasons.some((r) => r.code === 'behind_workouts')) return 'אימון אחד השבוע מחזיר אותך לקצב.'
   if (s.week.thisWeek > s.week.lastWeek && s.dayNumber > 7)
     return `השבוע כבר ${s.week.thisWeek} ימים מסומנים, יותר מכל השבוע שעבר.`
-  if (s.dayNumber <= 3) return 'ההתחלה היא החלק הקשה, והיא כבר מאחוריך.'
   return `יום ${s.dayNumber}. עוד ${s.rewardRemaining} ימים מסומנים לאימון האישי.`
 }
 
