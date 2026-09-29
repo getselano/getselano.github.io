@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ActionForm } from '@/components/ActionForm'
-import { Check, Message, Phone } from '@/components/icons'
+import { Message, Phone } from '@/components/icons'
 import { WeekStrip, fmt, Frac } from '@/components/participant'
 import { STATUS_LABEL, STATUS_SOFT } from '@/components/staff'
 import { WeightChart } from '@/components/WeightChart'
