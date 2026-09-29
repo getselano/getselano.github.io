@@ -2,7 +2,7 @@
 // Used only when no Supabase project is configured.
 import { addDays, rangeDays, todayIL, weekday } from '../dates'
 import { PROGRAM_DAYS } from '../program'
-import type { CoachCall, DailyLog, Goal, Milestone, Participant, ScheduleSlot, Staff } from '../types'
+import type { CoachCall, DailyLog, Deal, Goal, Milestone, Participant, ScheduleSlot, Staff } from '../types'
 
 export interface DemoStore {
   staff: Staff[]
@@ -12,6 +12,7 @@ export interface DemoStore {
   calls: CoachCall[]
   milestones: (Milestone & { participant_id: string })[]
   schedule: ScheduleSlot[]
+  deals: Deal[]
   notifications: { kind: string; recipient: string; sent_on: string; status: string; detail?: string }[]
 }
 
@@ -162,7 +163,24 @@ export function seedDemo(today = todayIL()): DemoStore {
     { id: 'slot-thu', weekday: 4, start_time: '07:00', coach_id: 'st-ron', title: 'אימון בוקר', active: true },
   ]
 
-  return { staff: DEMO_STAFF.map((s) => ({ ...s })), participants, goals, logs, calls, milestones, schedule, notifications: [] }
+  const deals: Deal[] = participants.slice(0, 3).map((p, i) => ({
+    participant_id: p.id,
+    id_number: `0${31234567 + i}`,
+    signed_at: `${p.start_date.split('-').reverse().join('/')} 18:30`,
+    birth_date: null,
+    address: null,
+    payment: i === 1 ? 'אשראי · 3 תשלומים' : 'אשראי · תשלום אחד',
+    price: p.price,
+    photo_consent: p.marketing_consent,
+    needs_medical: i === 2,
+    is_minor: false,
+    parent_name: null,
+    parent_id: null,
+    parent_phone: null,
+    agreement_url: null,
+  }))
+
+  return { staff: DEMO_STAFF.map((s) => ({ ...s })), participants, goals, logs, calls, milestones, schedule, deals, notifications: [] }
 }
 
 /** Who can be picked on the demo login screen. */

@@ -4,8 +4,8 @@ import { addDays, todayIL } from '../dates'
 import { normalizePhone } from '../phone'
 import { PRICE_DEFAULT, PROGRAM_DAYS } from '../program'
 import { serviceClient, userClient } from '../supabase/server'
-import type { CoachCall, DailyLog, Goal, Milestone, Participant, ParticipantBundle, ScheduleSlot, Staff } from '../types'
-import type { ServiceRepo, UserRepo, Viewer } from './repo'
+import type { CoachCall, DailyLog, Deal, Goal, Milestone, Participant, ParticipantBundle, ScheduleSlot, Staff } from '../types'
+import type { ServiceRepo, SignupInput, UserRepo, Viewer } from './repo'
 
 function must<T>(r: { data: unknown; error: { message: string } | null }): T {
   if (r.error) throw new Error(r.error.message)
@@ -102,6 +102,11 @@ export class SupabaseUserRepo implements UserRepo {
     return rows.map((s) => ({ ...s, start_time: s.start_time.slice(0, 5) }))
   }
 
+  async deal(participantId: string) {
+    const r = await this.db.from('participant_deals').select('*').eq('participant_id', participantId).maybeSingle()
+    return (r.data as Deal | null) ?? null
+  }
+
   async markToday(field: string, value: boolean, weight?: number | null) {
     must(await this.db.rpc('mark_today', { field, value, weight_kg: weight ?? null }))
   }
@@ -196,33 +201,43 @@ export class SupabaseServiceRepo implements ServiceRepo {
     )
   }
 
-  async upsertParticipantByPhone(input: Parameters<ServiceRepo['upsertParticipantByPhone']>[0]) {
+  async recordSignup(input: SignupInput) {
     const existing = await this.db.from('participants').select('id').eq('phone', input.phone).maybeSingle()
+    let id: string
+    let created = false
     if (existing.data) {
+      id = existing.data.id as string
       const patch: Record<string, unknown> = { full_name: input.full_name }
       if (input.email) patch.email = input.email
-      must(await this.db.from('participants').update(patch).eq('id', existing.data.id))
-      return { id: existing.data.id as string, created: false }
+      if (input.price) patch.price = input.price
+      if (input.marketing_consent != null) patch.marketing_consent = input.marketing_consent
+      if (input.start_date) {
+        // Move the start only while nothing has been logged yet.
+        const logs = await this.db.from('daily_logs').select('id', { count: 'exact', head: true }).eq('participant_id', id)
+        if (!logs.count) Object.assign(patch, { start_date: input.start_date, end_date: addDays(input.start_date, PROGRAM_DAYS - 1) })
+      }
+      must(await this.db.from('participants').update(patch).eq('id', id))
+    } else {
+      const start = input.start_date || todayIL()
+      const row = {
+        full_name: input.full_name,
+        phone: input.phone,
+        email: input.email,
+        start_date: start,
+        end_date: addDays(start, PROGRAM_DAYS - 1),
+        price: input.price ?? PRICE_DEFAULT,
+        marketing_consent: input.marketing_consent ?? false,
+        status: 'active',
+      }
+      id = (must(await this.db.from('participants').insert(row).select('id').single()) as { id: string }).id
+      created = true
     }
-    const start = input.start_date || todayIL()
-    const row = {
-      full_name: input.full_name,
-      phone: input.phone,
-      email: input.email ?? null,
-      start_date: start,
-      end_date: addDays(start, PROGRAM_DAYS - 1),
-      price: input.price ?? PRICE_DEFAULT,
-      status: 'active',
-    }
-    const created = must(await this.db.from('participants').insert(row).select('id').single()) as { id: string }
-    return { id: created.id, created: true }
-  }
-
-  async upsertGoalByPhone(phone: string, goal: Omit<Goal, 'participant_id' | 'id'>) {
-    const p = await this.db.from('participants').select('id').eq('phone', phone).maybeSingle()
-    if (!p.data) return false
-    must(await this.db.from('goals').upsert({ ...goal, participant_id: p.data.id }, { onConflict: 'participant_id' }))
-    return true
+    must(
+      await this.db
+        .from('participant_deals')
+        .upsert({ ...input.deal, participant_id: id, updated_at: new Date().toISOString() }, { onConflict: 'participant_id' }),
+    )
+    return { id, created }
   }
 
   async claimNotification(kind: string, recipient: string, day: string) {

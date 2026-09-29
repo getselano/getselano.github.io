@@ -4,7 +4,7 @@ import { addDays, todayIL } from '../dates'
 import { PRICE_DEFAULT, PROGRAM_DAYS } from '../program'
 import type { Participant, ParticipantBundle, Staff } from '../types'
 import { seedDemo, type DemoStore } from './demo-seed'
-import type { ServiceRepo, UserRepo, Viewer } from './repo'
+import type { ServiceRepo, SignupInput, UserRepo, Viewer } from './repo'
 
 export const DEMO_COOKIE = 'grip_demo_as'
 
@@ -92,6 +92,11 @@ export class DemoUserRepo implements UserRepo {
 
   async schedule() {
     return (await this.viewer()) ? [...store().schedule].sort((a, b) => a.weekday - b.weekday || (a.start_time < b.start_time ? -1 : 1)) : []
+  }
+
+  async deal(participantId: string) {
+    if ((await this.viewer())?.role !== 'admin') return null
+    return store().deals.find((d) => d.participant_id === participantId) ?? null
   }
 
   async markToday(field: 'nutrition_logged' | 'workout_attended' | 'measurement_logged', value: boolean, weight?: number | null) {
@@ -219,40 +224,39 @@ export class DemoServiceRepo implements ServiceRepo {
         s.milestones.push({ participant_id: participantId, kind: kind as never, earned_at: new Date().toISOString(), seen_at: null })
   }
 
-  async upsertParticipantByPhone(input: Parameters<ServiceRepo['upsertParticipantByPhone']>[0]) {
+  async recordSignup(input: SignupInput) {
     const s = store()
-    const existing = s.participants.find((p) => p.phone === input.phone)
-    if (existing) {
-      existing.full_name = input.full_name
-      if (input.email) existing.email = input.email
-      return { id: existing.id, created: false }
+    let p = s.participants.find((x) => x.phone === input.phone)
+    let created = false
+    if (p) {
+      p.full_name = input.full_name
+      if (input.email) p.email = input.email
+      if (input.price) p.price = input.price
+      if (input.marketing_consent != null) p.marketing_consent = input.marketing_consent
+      if (input.start_date && !s.logs.some((l) => l.participant_id === p!.id))
+        Object.assign(p, { start_date: input.start_date, end_date: addDays(input.start_date, PROGRAM_DAYS - 1) })
+    } else {
+      const start = input.start_date || todayIL()
+      p = {
+        id: newId('p'),
+        full_name: input.full_name,
+        phone: input.phone,
+        email: input.email,
+        start_date: start,
+        end_date: addDays(start, PROGRAM_DAYS - 1),
+        price: input.price ?? PRICE_DEFAULT,
+        coach_id: null,
+        nutritionist_id: null,
+        status: 'active',
+        marketing_consent: input.marketing_consent ?? false,
+        created_at: new Date().toISOString(),
+      }
+      s.participants.push(p)
+      created = true
     }
-    const start = input.start_date || todayIL()
-    const id = newId('p')
-    s.participants.push({
-      id,
-      full_name: input.full_name,
-      phone: input.phone,
-      email: input.email ?? null,
-      start_date: start,
-      end_date: addDays(start, PROGRAM_DAYS - 1),
-      price: input.price ?? PRICE_DEFAULT,
-      coach_id: null,
-      nutritionist_id: null,
-      status: 'active',
-      marketing_consent: false,
-      created_at: new Date().toISOString(),
-    })
-    return { id, created: true }
-  }
-
-  async upsertGoalByPhone(phone: string, goal: Parameters<ServiceRepo['upsertGoalByPhone']>[1]) {
-    const s = store()
-    const p = s.participants.find((x) => x.phone === phone)
-    if (!p) return false
-    s.goals = s.goals.filter((x) => x.participant_id !== p.id)
-    s.goals.push({ ...goal, participant_id: p.id })
-    return true
+    s.deals = s.deals.filter((d) => d.participant_id !== p!.id)
+    s.deals.push({ ...input.deal, participant_id: p.id })
+    return { id: p.id, created }
   }
 
   async claimNotification(kind: string, recipient: string, day: string) {

@@ -13,7 +13,8 @@ export default async function EditParticipant({ params, searchParams }: { params
   const { day } = await searchParams
   const row = await loadParticipant(id)
   if (!row) notFound()
-  const staff = await (await userRepo()).staff()
+  const repo = await userRepo()
+  const [staff, deal] = await Promise.all([repo.staff(), repo.deal(id)])
   const p = row.bundle.participant
   const today = todayIL()
   const last = p.end_date < today ? p.end_date : today
@@ -39,6 +40,30 @@ export default async function EditParticipant({ params, searchParams }: { params
       <section className="card">
         <div className="card-title"><h2>פרטים והקצאת צוות</h2></div>
         <ParticipantForm p={p} staff={staff} />
+      </section>
+
+      <section className="card">
+        <div className="card-title"><h2>פרטי העסקה</h2><span className="hint">רק admin רואה</span></div>
+        {deal ? (
+          <table className="table">
+            <tbody>
+              <Row k="נחתם" v={deal.signed_at} />
+              <Row k="תמורה" v={deal.price != null ? `${deal.price.toLocaleString('he-IL')} ₪` : null} />
+              <Row k="אמצעי תשלום" v={deal.payment} />
+              <Row k="ת.ז." v={deal.id_number} />
+              <Row k="תאריך לידה" v={deal.birth_date} />
+              <Row k="כתובת" v={deal.address} />
+              <Row k="שימוש בתמונות" v={deal.photo_consent == null ? null : deal.photo_consent ? 'מאשר' : 'לא מאשר'} />
+              <Row k="תעודה רפואית" v={deal.needs_medical == null ? null : deal.needs_medical ? 'נדרשת' : 'לא נדרשת'} />
+              {deal.is_minor && <Row k="קטין · הורה חותם" v={[deal.parent_name, deal.parent_id, deal.parent_phone].filter(Boolean).join(' · ')} />}
+              {deal.agreement_url && (
+                <tr><th>ההסכם החתום</th><td><a className="link" href={deal.agreement_url} target="_blank" rel="noreferrer">פתיחת ה-PDF</a></td></tr>
+              )}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted small">אין פרטי עסקה. המשתתף נוצר ידנית, או לפני שמערכת החתימה חוברה.</p>
+        )}
       </section>
 
       {sel && (
@@ -82,5 +107,15 @@ export default async function EditParticipant({ params, searchParams }: { params
         </div>
       )}
     </>
+  )
+}
+
+function Row({ k, v }: { k: string; v: string | null }) {
+  if (!v) return null
+  return (
+    <tr>
+      <th style={{ width: '38%' }}>{k}</th>
+      <td>{v}</td>
+    </tr>
   )
 }

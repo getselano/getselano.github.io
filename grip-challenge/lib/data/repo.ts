@@ -1,6 +1,7 @@
 import type { ISODate } from '../dates'
 import type {
   CoachCall,
+  Deal,
   DailyLog,
   Goal,
   MilestoneKind,
@@ -38,6 +39,8 @@ export interface UserRepo {
   bundles(): Promise<ParticipantBundle[]>
   staff(): Promise<Staff[]>
   schedule(): Promise<ScheduleSlot[]>
+  /** Deal details from the signing system (admin only; null for everyone else). */
+  deal(participantId: string): Promise<Deal | null>
 
   // participant
   markToday(field: MarkField, value: boolean, weight?: number | null): Promise<void>
@@ -63,10 +66,23 @@ export interface ServiceRepo {
   allBundles(): Promise<ParticipantBundle[]>
   staff(): Promise<Staff[]>
   addMilestones(participantId: string, kinds: MilestoneKind[]): Promise<void>
-  /** Create (or update, matched by phone) a participant from the signing system. */
-  upsertParticipantByPhone(input: Partial<ParticipantInput> & Pick<ParticipantInput, 'full_name' | 'phone'>): Promise<{ id: string; created: boolean }>
-  upsertGoalByPhone(phone: string, goal: Omit<Goal, 'participant_id' | 'id'>): Promise<boolean>
+  /**
+   * A signed agreement → a participant (matched by phone, never duplicated)
+   * plus their deal details. The start date only moves while nothing has
+   * been logged yet.
+   */
+  recordSignup(input: SignupInput): Promise<{ id: string; created: boolean }>
   /** Records a send; false if this (kind, recipient, day) was already sent. */
   claimNotification(kind: string, recipient: string, day: ISODate): Promise<boolean>
   finishNotification(kind: string, recipient: string, day: ISODate, status: string, detail?: string): Promise<void>
+}
+
+export interface SignupInput {
+  full_name: string
+  phone: string
+  email: string | null
+  start_date?: ISODate
+  price?: number
+  marketing_consent?: boolean | null
+  deal: Omit<Deal, 'participant_id'>
 }

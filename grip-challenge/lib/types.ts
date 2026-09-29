@@ -84,3 +84,21 @@ export interface ParticipantBundle {
   calls: CoachCall[]
   milestones: Milestone[]
 }
+
+/** Deal details from the signing system. Admin-only. */
+export interface Deal {
+  participant_id: string
+  id_number: string | null
+  signed_at: string | null
+  birth_date: string | null
+  address: string | null
+  payment: string | null
+  price: number | null
+  photo_consent: boolean | null
+  needs_medical: boolean | null
+  is_minor: boolean | null
+  parent_name: string | null
+  parent_id: string | null
+  parent_phone: string | null
+  agreement_url: string | null
+}

@@ -26,13 +26,13 @@ npm run typecheck
 | `lib/data/` | גישה לנתונים: Supabase (דרך RLS) ומימוש הדגמה בזיכרון מאחורי אותו ממשק. |
 | `app/(participant)` | בית · סימון יומי (`/today`) · התקדמות · הצוות שלי · רגע הזכייה (`/win`). |
 | `app/(staff)` | מסך צוות (`/team`), כרטיס משתתף ותיעוד שיחה, דשבורד admin, ניהול משתתפים/צוות/לו״ז, לפני-אחרי. |
-| `app/api/intake/*` | קליטה ממערכת החתימה ומנספח היעד. קוד ה-Apps Script ב-`apps-script/grip-intake.gs`. |
+| `app/api/intake/signup` | קליטה ממערכת החתימה: משתתף + פרטי העסקה (`participant_deals`, admin בלבד). קוד ה-Apps Script ב-`apps-script/grip-intake.gs`. היעד נקבע בשיחת הקליטה ומוזן באפליקציה. |
 | `app/api/cron/*` + `netlify/functions` | תזכורת יומית (20:00) וסיכום שבועי (מוצ״ש 21:00) בוואטסאפ. |
 | `app/api/auth/send-code` | Send SMS Hook של Supabase: קוד הכניסה נשלח בוואטסאפ (Green API). |
 
 ## הקמה
 
-1. **Supabase:** פרויקט חדש → SQL Editor → להריץ את `supabase/migrations/0001_schema.sql`.
+1. **Supabase:** פרויקט חדש → SQL Editor → להריץ את `supabase/migrations/0001_schema.sql` ואחריו `0002_deals.sql`.
 2. **Auth → Phone:** להפעיל התחברות בטלפון. קוד הכניסה נשלח **בוואטסאפ** מהטלפון העסקי של גריפ (Green API)
    דרך Send SMS Hook: Authentication → Hooks → Send SMS → HTTPS → `https://<site>/api/auth/send-code`,
    ואת ה-secret שנוצר שמים ב-`SEND_CODE_HOOK_SECRET`. אין צורך ב-Twilio.
@@ -40,8 +40,8 @@ npm run typecheck
    (טלפון בפורמט ספרות בלבד, בלי `+` ובלי 0 מוביל). משם הכל מהממשק.
 4. **Netlify:** Base directory = `grip-challenge`. משתני הסביבה לפי `.env.example`.
    ה-scheduled functions נטענות מ-`netlify/functions`.
-5. **Apps Script:** להדביק את `apps-script/grip-intake.gs`, להגדיר `GRIP_URL` ו-`GRIP_INTAKE_SECRET`,
-   ולקרוא ל-`gripOnSigned()` ול-`gripOnGoal()` מהמקומות הקיימים.
+5. **Apps Script:** להדביק את `apps-script/grip-intake.gs` בסוף `קוד.gs`, להגדיר `GRIP_URL` ו-`GRIP_INTAKE_SECRET`,
+   ולקרוא ל-`gripSync_(data, stamp, file.getUrl())` בתוך `submitAgreement` אחרי `logRow_`.
 6. **וואטסאפ (Green API):** `GREEN_API_URL`, `GREEN_API_ID_INSTANCE`, `GREEN_API_TOKEN` מדף המופע ב-Green API.
    קוד הכניסה, התזכורת היומית והסיכום השבועי יוצאים כולם מהמספר העסקי. בלי טוקן ההודעות רק נרשמות ללוג (dry run).
 7. **בוסטאפ:** כשיתברר ה-API, לממש את `fetchCheckIns` ב-`lib/attendance/boostapp.ts` ולהגדיר
