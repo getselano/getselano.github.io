@@ -23,7 +23,12 @@ export async function participantView() {
   const p = bundle.participant
   const todayLog = bundle.logs.find((l) => l.log_date === snap.today)
   const active = p.status === 'active' && snap.started && !snap.finished
-  const workoutToday = hasWorkoutOn(schedule, snap.today) || !!todayLog?.workout_attended
+  // Participants book their own classes in Boostapp, so without a fixed
+  // schedule (or the Boostapp integration) we cannot know who trains today.
+  // Then the workout card shows every day and is optional: it never holds
+  // back "סיימת להיום".
+  const knownSchedule = schedule.some((s) => s.active)
+  const workoutToday = !knownSchedule || hasWorkoutOn(schedule, snap.today) || !!todayLog?.workout_attended
 
   return {
     participant: p,
@@ -33,6 +38,7 @@ export async function participantView() {
     active,
     cards: {
       workout: active && workoutToday,
+      workoutOptional: !knownSchedule,
       measurement: active && (snap.isMeasurementDay || !!todayLog?.measurement_logged),
     },
     workoutSelfReport: attendanceIsSelfReported(),
@@ -50,7 +56,7 @@ export function remainingToday(v: Pick<ParticipantView, 'todayLog' | 'cards' | '
   if (!v.active) return []
   const out: { field: 'nutrition_logged' | 'workout_attended' | 'measurement_logged'; label: string }[] = []
   if (!v.todayLog?.nutrition_logged) out.push({ field: 'nutrition_logged', label: 'דיווח תזונה' })
-  if (v.cards.workout && v.workoutSelfReport && !v.todayLog?.workout_attended) out.push({ field: 'workout_attended', label: 'הגעה לאימון' })
+  if (v.cards.workout && !v.cards.workoutOptional && v.workoutSelfReport && !v.todayLog?.workout_attended) out.push({ field: 'workout_attended', label: 'הגעה לאימון' })
   if (v.cards.measurement && !v.todayLog?.measurement_logged) out.push({ field: 'measurement_logged', label: 'מדידה שבועית' })
   return out
 }

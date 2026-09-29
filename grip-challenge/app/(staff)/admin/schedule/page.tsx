@@ -15,7 +15,7 @@ export default async function ScheduleAdmin() {
     <>
       <header className="greet">
         <div>
-          <p className="hello">בימים האלה מופיע למשתתפים הכרטיס &quot;הגעתי לאימון&quot;, ומהם נלקח &quot;האימון הבא&quot;</p>
+          <p className="hello">אופציונלי. רק אם יש אימונים קבועים. כשהלו״ז ריק (המתאמנים קובעים בבוסטאפ), הכרטיס &quot;הגעתי לאימון&quot; מופיע כל יום כרשות</p>
           <h1>לו״ז אימונים</h1>
         </div>
         <span className="pill">{attendanceIsSelfReported() ? 'נוכחות: דיווח ידני + אישור מאמן/ת' : 'נוכחות: בוסטאפ'}</span>

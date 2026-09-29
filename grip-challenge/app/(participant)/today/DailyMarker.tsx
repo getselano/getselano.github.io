@@ -18,7 +18,7 @@ interface Props {
   today: string
   initial: Marks
   initialWeight: number | null
-  show: { workout: boolean; measurement: boolean }
+  show: { workout: boolean; workoutOptional: boolean; measurement: boolean }
   workoutSelfReport: boolean
   workoutConfirmed: boolean
   workoutHint: string | null
@@ -138,7 +138,7 @@ export function DailyMarker(props: Props) {
   const shown: MarkField[] = ['nutrition_logged']
   if (props.show.workout) shown.push('workout_attended')
   if (props.show.measurement) shown.push('measurement_logged')
-  const actionable = shown.filter((f) => f !== 'workout_attended' || props.workoutSelfReport)
+  const actionable = shown.filter((f) => f !== 'workout_attended' || (props.workoutSelfReport && !props.show.workoutOptional))
   const remaining = actionable.filter((f) => !marks[f])
   const allDone = remaining.length === 0
 
@@ -158,7 +158,7 @@ export function DailyMarker(props: Props) {
               on={marks.workout_attended}
               icon={<Dumbbell size={26} />}
               title="הגעתי לאימון"
-              sub={marks.workout_attended ? (props.workoutConfirmed ? 'ההגעה אושרה' : 'נרשם. ממתין לאישור.') : props.workoutHint || 'יש אימון היום'}
+              sub={marks.workout_attended ? (props.workoutConfirmed ? 'ההגעה אושרה' : 'נרשם. ממתין לאישור.') : props.workoutHint || (props.show.workoutOptional ? 'רק בימים שהתאמנת' : 'יש אימון היום')}
               onTap={() => toggle('workout_attended')}
             />
           ) : (
