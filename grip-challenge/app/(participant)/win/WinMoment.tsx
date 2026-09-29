@@ -88,7 +88,7 @@ export function WinMoment(p: Props) {
           <Gift size={22} style={{ color: 'var(--streak)' }} />
           <div>
             <strong>אימון אישי אחד על אחד</strong>
-            <div className="muted small">בשווי <span className="num">{p.value}</span> ₪{p.coachName ? ` · עם ${p.coachName} או מאמן לבחירתך` : ''}</div>
+            <div className="muted small">בשווי <span className="num">{p.value}</span> ₪{p.coachName ? ` · עם ${p.coachName} או מאמן/ת לבחירתך` : ''}</div>
           </div>
         </div>
         <div className="row">

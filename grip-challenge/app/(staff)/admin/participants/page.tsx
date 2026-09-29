@@ -27,7 +27,7 @@ export default async function ParticipantsAdmin() {
         <div className="scroll-x">
           <table className="table">
             <thead>
-              <tr><th>שם</th><th>טלפון</th><th>התחלה</th><th>יום</th><th>מאמן</th><th>תזונאית</th><th>סטטוס</th><th></th></tr>
+              <tr><th>שם</th><th>טלפון</th><th>התחלה</th><th>יום</th><th>מאמן/ת</th><th>תזונאי/ת</th><th>סטטוס</th><th></th></tr>
             </thead>
             <tbody>
               {rows.map(({ bundle: { participant: p }, snap }) => (

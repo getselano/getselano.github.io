@@ -3,7 +3,7 @@ import { Logout } from '@/components/icons'
 import { requireRole } from '@/lib/data'
 import { signOut } from '../login/actions'
 
-const ROLE_LABEL = { coach: 'מאמן', nutritionist: 'תזונאית', admin: 'ניהול' } as const
+const ROLE_LABEL = { coach: 'מאמן/ת', nutritionist: 'תזונאי/ת', admin: 'ניהול' } as const
 
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
   const v = await requireRole('coach', 'nutritionist', 'admin')

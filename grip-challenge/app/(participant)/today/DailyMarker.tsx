@@ -149,7 +149,7 @@ export function DailyMarker(props: Props) {
           on={marks.nutrition_logged}
           icon={<Utensils size={26} />}
           title="דיווח תזונה"
-          sub={marks.nutrition_logged ? 'דווח. הרצף ממשיך.' : 'דיווחתי לתזונאית היום'}
+          sub={marks.nutrition_logged ? 'דווח. הרצף ממשיך.' : 'דיווחתי לתזונאי/ת היום'}
           onTap={() => toggle('nutrition_logged')}
         />
         {props.show.workout &&
@@ -158,7 +158,7 @@ export function DailyMarker(props: Props) {
               on={marks.workout_attended}
               icon={<Dumbbell size={26} />}
               title="הגעתי לאימון"
-              sub={marks.workout_attended ? (props.workoutConfirmed ? 'המאמן אישר' : 'נרשם. המאמן יאשר.') : props.workoutHint || 'יש אימון היום'}
+              sub={marks.workout_attended ? (props.workoutConfirmed ? 'ההגעה אושרה' : 'נרשם. ממתין לאישור.') : props.workoutHint || 'יש אימון היום'}
               onTap={() => toggle('workout_attended')}
             />
           ) : (

@@ -36,7 +36,7 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
         <div>
           <p className="hello"><Link href="/team" className="link">המשתתפים</Link> / יום <span className="num">{snap.dayNumber}</span></p>
           <h1>{p.full_name}</h1>
-          <p className="muted small">מאמן: {staffName(p.coach_id)} · תזונאית: {staffName(p.nutritionist_id)}</p>
+          <p className="muted small">מאמן/ת: {staffName(p.coach_id)} · תזונאי/ת: {staffName(p.nutritionist_id)}</p>
         </div>
         <div className="row">
           <a className="btn accent small" href={whatsappLink(p.phone, `היי ${first}`)} target="_blank" rel="noreferrer"><Message size={18} /> וואטסאפ</a>
@@ -53,7 +53,7 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
         {snap.status.reasons.length ? (
           <ul style={{ margin: '8px 0 0', paddingInlineStart: 18 }}>
             {snap.status.reasons.map((r) => (
-              <li key={r.code} style={{ color: STATUS_COLORS[r.color] }}>{r.text} <span className="hint">· {r.owner === 'coach' ? 'מאמן' : 'תזונאית'}</span></li>
+              <li key={r.code} style={{ color: STATUS_COLORS[r.color] }}>{r.text} <span className="hint">· {r.owner === 'coach' ? 'מאמן/ת' : 'תזונאי/ת'}</span></li>
             ))}
           </ul>
         ) : (

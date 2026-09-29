@@ -18,12 +18,12 @@ export default async function ScheduleAdmin() {
           <p className="hello">בימים האלה מופיע למשתתפים הכרטיס &quot;הגעתי לאימון&quot;, ומהם נלקח &quot;האימון הבא&quot;</p>
           <h1>לו״ז אימונים</h1>
         </div>
-        <span className="pill">{attendanceIsSelfReported() ? 'נוכחות: דיווח ידני + אישור מאמן' : 'נוכחות: בוסטאפ'}</span>
+        <span className="pill">{attendanceIsSelfReported() ? 'נוכחות: דיווח ידני + אישור מאמן/ת' : 'נוכחות: בוסטאפ'}</span>
       </header>
       <div className="split">
         <section className="card" style={{ padding: 8 }}>
           <table className="table">
-            <thead><tr><th>יום</th><th>שעה</th><th>אימון</th><th>מאמן</th><th></th></tr></thead>
+            <thead><tr><th>יום</th><th>שעה</th><th>אימון</th><th>מאמן/ת</th><th></th></tr></thead>
             <tbody>
               {slots.map((s) => (
                 <tr key={s.id} style={s.active ? undefined : { opacity: 0.5 }}>
@@ -53,7 +53,7 @@ export default async function ScheduleAdmin() {
             <div className="field"><label htmlFor="start_time">שעה</label><input id="start_time" name="start_time" type="time" defaultValue="19:00" required /></div>
             <div className="field"><label htmlFor="title">שם</label><input id="title" name="title" type="text" defaultValue="אימון קבוצתי" /></div>
             <div className="field">
-              <label htmlFor="coach_id">מאמן</label>
+              <label htmlFor="coach_id">מאמן/ת</label>
               <select id="coach_id" name="coach_id" defaultValue="">
                 <option value="">—</option>
                 {coaches.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}

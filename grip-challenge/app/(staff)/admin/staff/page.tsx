@@ -4,7 +4,7 @@ import { displayPhone } from '@/lib/phone'
 import { deleteStaffAction, saveStaffAction } from '../actions'
 
 export const metadata = { title: 'צוות' }
-const ROLE = { coach: 'מאמן', nutritionist: 'תזונאית', admin: 'admin' } as const
+const ROLE = { coach: 'מאמן/ת', nutritionist: 'תזונאי/ת', admin: 'admin' } as const
 
 export default async function StaffAdmin() {
   const v = await requireRole('admin')
@@ -43,7 +43,7 @@ export default async function StaffAdmin() {
             <div className="field">
               <label htmlFor="role">תפקיד</label>
               <select id="role" name="role" defaultValue="coach">
-                <option value="coach">מאמן</option><option value="nutritionist">תזונאית</option><option value="admin">admin</option>
+                <option value="coach">מאמן/ת</option><option value="nutritionist">תזונאי/ת</option><option value="admin">admin</option>
               </select>
             </div>
             <p className="hint">הכניסה בקוד שנשלח בוואטסאפ למספר הזה.</p>

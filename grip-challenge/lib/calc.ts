@@ -193,7 +193,7 @@ export function statusOf(input: {
     reasons.push({ code: 'no_log', color: 'yellow', text: 'יומיים בלי דיווח תזונה', owner: 'nutritionist' })
   }
   if (sinceCall >= 7) {
-    reasons.push({ code: 'missed_call', color: 'red', text: `אין שיחת מאמן ${sinceCall} ימים`, owner: 'coach' })
+    reasons.push({ code: 'missed_call', color: 'red', text: `אין שיחת מאמן/ת ${sinceCall} ימים`, owner: 'coach' })
   }
   if (actual <= expected - 2) {
     reasons.push({
@@ -259,7 +259,7 @@ export function conditions(input: {
       met: nutrition >= NUTRITION_REQUIRED_DAYS,
     },
     { key: 'measurements', label: 'מדידה שבועית', value: measurements, target: PROGRAM_WEEKS, expectedByNow: weeksDone, met: measurements >= PROGRAM_WEEKS },
-    { key: 'calls', label: 'שיחת מאמן הצלחה', value: callWeeks, target: PROGRAM_WEEKS, expectedByNow: weeksDone, met: callWeeks >= PROGRAM_WEEKS },
+    { key: 'calls', label: 'שיחת מאמן/ת הצלחה', value: callWeeks, target: PROGRAM_WEEKS, expectedByNow: weeksDone, met: callWeeks >= PROGRAM_WEEKS },
   ]
 }
 

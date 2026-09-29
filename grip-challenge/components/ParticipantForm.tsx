@@ -24,16 +24,16 @@ export function ParticipantForm({ p, staff }: { p?: Participant; staff: Staff[] 
           </select>
         </div>
         <div className="field">
-          <label htmlFor="coach_id">מאמן הצלחה</label>
+          <label htmlFor="coach_id">מאמן/ת הצלחה</label>
           <select id="coach_id" name="coach_id" defaultValue={p?.coach_id ?? ''}>
             <option value="">לא שובץ</option>
             {coaches.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
           </select>
         </div>
         <div className="field">
-          <label htmlFor="nutritionist_id">תזונאית</label>
+          <label htmlFor="nutritionist_id">תזונאי/ת</label>
           <select id="nutritionist_id" name="nutritionist_id" defaultValue={p?.nutritionist_id ?? ''}>
-            <option value="">לא שובצה</option>
+            <option value="">לא שובץ/ה</option>
             {nutris.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
           </select>
         </div>
