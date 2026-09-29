@@ -3,7 +3,8 @@ import type { DailyLog } from '../types'
 import type { AttendanceProvider, AttendanceRecord } from './provider'
 
 /**
- * The participant marks "הגעתי לאימון" in daily_logs, the coach confirms.
+ * The participant marks "הגעתי לאימון" in daily_logs and it counts at once;
+ * staff only remove a mistaken mark. No daily confirmation.
  * Reads through whatever loads daily_logs for the caller (RLS-scoped).
  */
 export class ManualAttendanceProvider implements AttendanceProvider {

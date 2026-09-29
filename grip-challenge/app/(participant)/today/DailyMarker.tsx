@@ -176,7 +176,7 @@ export function DailyMarker(props: Props) {
               on={marks.workout_attended}
               icon={<Dumbbell size={26} />}
               title="הגעתי לאימון"
-              sub={marks.workout_attended ? (props.workoutConfirmed ? 'נספר לאימונים שלך. המאמן/ת אישר/ה.' : 'נספר לאימונים שלך.') : props.workoutHint || (props.show.workoutOptional ? 'רק בימים שהתאמנת' : 'יש אימון היום')}
+              sub={marks.workout_attended ? 'נספר לאימונים שלך.' : props.workoutHint || (props.show.workoutOptional ? 'רק בימים שהתאמנת' : 'יש אימון היום')}
               onTap={() => toggle('workout_attended')}
             />
           ) : (

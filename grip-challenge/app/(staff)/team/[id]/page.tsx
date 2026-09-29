@@ -22,8 +22,10 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
   const p = bundle.participant
   const color = STATUS_COLORS[snap.status.color]
   const staffName = (sid: string | null) => staff.find((s) => s.id === sid)?.full_name ?? '—'
-  const unconfirmed = attendanceIsSelfReported()
-    ? bundle.logs.filter((l) => l.workout_attended && !l.workout_confirmed_by).sort((a, b) => (a.log_date < b.log_date ? 1 : -1))
+  // Self-reported workouts count as soon as they are marked; staff only
+  // remove a mistaken one. Boostapp attendance is not editable here.
+  const attended = attendanceIsSelfReported()
+    ? bundle.logs.filter((l) => l.workout_attended).sort((a, b) => (a.log_date < b.log_date ? 1 : -1))
     : []
   const calls = [...bundle.calls].sort((a, b) => (a.call_date < b.call_date ? 1 : -1))
   const canEditGoal = v.role === 'nutritionist' || v.role === 'admin'
@@ -96,27 +98,20 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
             <WeightChart w={snap.weight} today={snap.dayNumber} />
           </section>
 
-          {unconfirmed.length > 0 && (
+          {attended.length > 0 && (
             <section className="card">
-              <div className="card-title"><h2>אישור הגעה לאימון</h2><span className="pill orange">{unconfirmed.length} ממתינים</span></div>
+              <div className="card-title"><h2>אימונים שסומנו</h2><span className="hint">נספרים אוטומטית</span></div>
+              <p className="hint" style={{ marginBottom: 10 }}>אין צורך לאשר. אם משהו סומן בטעות, אפשר להסיר.</p>
               <div className="stack">
-                {unconfirmed.map((l) => (
+                {attended.map((l) => (
                   <div key={l.log_date} className="row between">
                     <span>יום {HEB_WEEKDAYS_SHORT[weekday(l.log_date)]} · <span className="num">{shortDate(l.log_date)}</span></span>
-                    <div className="row">
-                      <form action={confirmWorkoutAction}>
-                        <input type="hidden" name="participant_id" value={p.id} />
-                        <input type="hidden" name="date" value={l.log_date} />
-                        <input type="hidden" name="confirm" value="1" />
-                        <button className="btn green small"><Check size={16} /> אישור</button>
-                      </form>
-                      <form action={confirmWorkoutAction}>
-                        <input type="hidden" name="participant_id" value={p.id} />
-                        <input type="hidden" name="date" value={l.log_date} />
-                        <input type="hidden" name="confirm" value="0" />
-                        <button className="btn ghost small">לא אישור</button>
-                      </form>
-                    </div>
+                    <form action={confirmWorkoutAction}>
+                      <input type="hidden" name="participant_id" value={p.id} />
+                      <input type="hidden" name="date" value={l.log_date} />
+                      <input type="hidden" name="confirm" value="0" />
+                      <button className="btn ghost small">הסרה</button>
+                    </form>
                   </div>
                 ))}
               </div>
