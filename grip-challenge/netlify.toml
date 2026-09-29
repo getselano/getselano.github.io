@@ -1,0 +1,15 @@
+# Netlify, with Base directory = grip-challenge (set in the Netlify UI).
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Runs the Next.js app (server routes, proxy, API) instead of serving .next as static files.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Scheduled functions call the cron routes; see netlify/functions.
+[functions]
+  directory = "netlify/functions"
