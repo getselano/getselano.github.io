@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Scheduled functions call the cron routes; see netlify/functions.
+[functions]
+  directory = "netlify/functions"
