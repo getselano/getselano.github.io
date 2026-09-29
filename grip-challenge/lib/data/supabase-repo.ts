@@ -50,16 +50,21 @@ export class SupabaseUserRepo implements UserRepo {
 
   async viewer(): Promise<Viewer | null> {
     if (this.cachedViewer !== undefined) return this.cachedViewer
-    const { data } = await this.db.auth.getUser()
-    const phone = data.user?.phone ? normalizePhone(data.user.phone) : null
+    // getClaims verifies the session JWT locally (asymmetric signing keys),
+    // so there is no round trip to the Auth server on every page.
+    const { data } = await this.db.auth.getClaims()
+    let raw = (data?.claims as { phone?: string } | undefined)?.phone
+    if (data?.claims && !raw) raw = (await this.db.auth.getUser()).data.user?.phone // older tokens without the claim
+    const phone = raw ? normalizePhone(raw) : null
     let v: Viewer | null = null
     if (phone) {
-      const staff = await this.db.from('staff').select('*').eq('phone', phone).maybeSingle()
+      // Both lookups at once: one round trip instead of two.
+      const [staff, p] = await Promise.all([
+        this.db.from('staff').select('*').eq('phone', phone).maybeSingle(),
+        this.db.from('participants').select('*').eq('phone', phone).maybeSingle(),
+      ])
       if (staff.data) v = { role: staff.data.role, staff: staff.data }
-      else {
-        const p = await this.db.from('participants').select('*').eq('phone', phone).maybeSingle()
-        if (p.data) v = { role: 'participant', participant: p.data }
-      }
+      else if (p.data) v = { role: 'participant', participant: p.data }
     }
     this.cachedViewer = v
     return v
@@ -75,15 +80,21 @@ export class SupabaseUserRepo implements UserRepo {
   }
 
   async bundle(participantId: string) {
+    const v = await this.viewer()
+    if (v?.role === 'participant') {
+      if (v.participant.id !== participantId) return null
+      // The participant's own row is already loaded; fetch the rest and the
+      // call dates (participants cannot read coach_calls) together.
+      const [[b], dates] = await Promise.all([
+        loadBundles(this.db, [v.participant], false),
+        this.db.rpc('my_call_dates').then(must<string[]>),
+      ])
+      b.calls = dates.map((call_date) => ({ participant_id: participantId, staff_id: '', call_date, summary: null, risk_flag: false }))
+      return b
+    }
     const p = await this.db.from('participants').select('*').eq('id', participantId).maybeSingle()
     if (!p.data) return null
-    const staff = await this.isStaff()
-    const [b] = await loadBundles(this.db, [p.data], staff)
-    if (!staff) {
-      // Participants cannot read coach_calls; they get the dates only.
-      const dates = must<string[]>(await this.db.rpc('my_call_dates'))
-      b.calls = dates.map((call_date) => ({ participant_id: p.data.id, staff_id: '', call_date, summary: null, risk_flag: false }))
-    }
+    const [b] = await loadBundles(this.db, [p.data], true)
     return b
   }
 

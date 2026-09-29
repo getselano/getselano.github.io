@@ -30,8 +30,10 @@ export async function markToday(field: MarkField, value: boolean, weight?: numbe
     console.error('markToday failed', e)
     return { ok: false, error: 'הסימון לא נשמר. נסו שוב.' }
   }
+  // No revalidatePath here: the marking screen updates from this result, and
+  // re-rendering the whole page tree on every tap only slows the answer down.
+  // Other screens are dynamic and read fresh data when opened.
   const v = await participantView()
-  revalidatePath('/', 'layout')
   return {
     ok: true,
     streak: v.snap.currentStreak,

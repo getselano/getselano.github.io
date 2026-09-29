@@ -26,8 +26,9 @@ export async function proxy(request: NextRequest) {
       },
     },
   })
-  const { data } = await supabase.auth.getUser()
-  if (!data.user && !isPublic) return NextResponse.redirect(new URL('/login', request.url))
+  // getClaims refreshes an expired session and verifies the JWT locally.
+  const { data } = await supabase.auth.getClaims()
+  if (!data?.claims && !isPublic) return NextResponse.redirect(new URL('/login', request.url))
   return response
 }
 

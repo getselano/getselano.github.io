@@ -8,10 +8,9 @@ import { syncMilestones } from './milestones'
 /** Everything a participant screen needs, computed once. */
 export async function participantView() {
   const v = await requireRole('participant')
-  const row = await loadParticipant(v.participant.id)
-  if (!row) redirect('/login')
   const repo = await userRepo()
-  const [schedule, staff] = await Promise.all([repo.schedule(), repo.staff()])
+  const [row, schedule, staff] = await Promise.all([loadParticipant(v.participant.id), repo.schedule(), repo.staff()])
+  if (!row) redirect('/login')
 
   // The milestone engine runs on every participant screen load, so a
   // milestone earned by a staff edit or an attendance sync still lands.

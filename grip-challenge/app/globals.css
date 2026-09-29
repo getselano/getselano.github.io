@@ -428,3 +428,8 @@ input[type='tel'] { direction: ltr; text-align: right; }
   .no-print { display: none !important; }
   body { background: #fff; }
 }
+
+/* ─── Loading skeleton ─────────────────────────────── */
+.skeleton { background: #EFEDE6; border-radius: var(--r-sm); animation: pulse 1.2s ease-in-out infinite; }
+.skeleton.card-sk { border-radius: var(--r-card); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
