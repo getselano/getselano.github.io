@@ -1,7 +1,7 @@
 // Presentational pieces shared by the participant screens.
 import { HEB_WEEKDAYS_SHORT } from '@/lib/dates'
 import type { Snapshot, WeekDot } from '@/lib/calc'
-import { MIN_SESSIONS, REWARD_DAYS } from '@/lib/program'
+import { MIN_SESSIONS, PERSONAL_TRAINING_VALUE, REWARD_DAYS } from '@/lib/program'
 import { Check, Flame } from './icons'
 
 export function StreakCard({ streak, longest, sentence }: { streak: number; longest: number; sentence?: string }) {
@@ -54,7 +54,7 @@ export function DualProgress({ snap, goalText }: { snap: Snapshot; goalText?: st
       </div>
       <div className="track">
         <div className="track-head">
-          <span className="track-name"><span className="dot" style={{ background: 'var(--streak)' }} />אימון אישי מתנה</span>
+          <span className="track-name"><span className="dot" style={{ background: 'var(--streak)' }} />אימון אישי מתנה <span className="hint" style={{ fontWeight: 400 }}>(בשווי <span className="num">{PERSONAL_TRAINING_VALUE}</span> ₪)</span></span>
           <span className="track-val"><Frac value={snap.rewardDays} of={REWARD_DAYS} /> ימים</span>
         </div>
         <div className="bar streak" role="progressbar" aria-valuenow={snap.rewardDays} aria-valuemin={0} aria-valuemax={REWARD_DAYS}>
