@@ -50,7 +50,7 @@ export function PhoneLogin() {
           <label htmlFor="phone">מספר הטלפון שלך</label>
           <input id="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="050-000-0000" value={raw} onChange={(e) => setRaw(e.target.value)} required />
         </div>
-        <p className="hint">נשלח אליך קוד ב-SMS. בלי סיסמה.</p>
+        <p className="hint">נשלח אליך קוד בוואטסאפ. בלי סיסמה.</p>
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn block" disabled={busy || !raw}>{busy ? 'שולחים…' : 'שלחו לי קוד'}</button>
       </form>
@@ -59,7 +59,7 @@ export function PhoneLogin() {
   return (
     <form className="card stack" onSubmit={verify}>
       <div className="field">
-        <label htmlFor="code">הקוד שקיבלת ב-SMS</label>
+        <label htmlFor="code">הקוד שקיבלת בוואטסאפ</label>
         <input id="code" className="otp" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} autoFocus required />
       </div>
       {error && <p className="error" role="alert">{error}</p>}

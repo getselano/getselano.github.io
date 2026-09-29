@@ -26,7 +26,7 @@ async function deliver(kind: string, recipient: string, phone: string, msg: Mess
   if (!(await repo.claimNotification(kind, recipient, day))) return { recipient, status: 'already_sent' }
   let r: Awaited<ReturnType<typeof sendWhatsApp>>
   try {
-    r = await sendWhatsApp(phone, msg)
+    r = await sendWhatsApp(phone, msg.text)
   } catch (e) {
     r = { status: 'failed', detail: String(e) }
   }

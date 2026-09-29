@@ -24,7 +24,7 @@ export default async function LoginPage() {
         {isDemo ? (
           <div className="card stack">
             <h2>מצב הדגמה</h2>
-            <p className="muted small">אין חיבור ל-Supabase, אז הנתונים לדוגמה והכניסה בלי SMS. בחרו את מי לראות:</p>
+            <p className="muted small">אין חיבור ל-Supabase, אז הנתונים לדוגמה והכניסה בלי קוד. בחרו את מי לראות:</p>
             <form action={demoSignIn} className="stack">
               {DEMO_PERSONAS.map((p) => (
                 <button key={p.id} name="as" value={p.id} className="persona" type="submit">

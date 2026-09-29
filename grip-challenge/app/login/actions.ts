@@ -6,11 +6,11 @@ import { DEMO_COOKIE } from '@/lib/data/demo-repo'
 import { isDemo, SUPABASE_SERVICE_ROLE_KEY } from '@/lib/env'
 import { normalizePhone } from '@/lib/phone'
 
-/** Normalizes the phone and says whether it belongs to a participant or staff member (before an SMS is spent on it). */
+/** Normalizes the phone and says whether it belongs to a participant or staff member (before a code is sent). */
 export async function checkPhone(raw: string): Promise<{ phone?: string; error?: string }> {
   const phone = normalizePhone(raw)
   if (!phone) return { error: 'המספר לא נראה תקין' }
-  if (!isDemo && !SUPABASE_SERVICE_ROLE_KEY) return { phone } // cannot check; let the SMS go
+  if (!isDemo && !SUPABASE_SERVICE_ROLE_KEY) return { phone } // cannot check; let the code go
   if (!(await serviceRepo().isRegisteredPhone(phone))) return { error: 'המספר הזה לא רשום לאתגר. דברו עם הצוות במועדון.' }
   return { phone }
 }

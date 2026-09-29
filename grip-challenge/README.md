@@ -28,23 +28,22 @@ npm run typecheck
 | `app/(staff)` | מסך צוות (`/team`), כרטיס משתתף ותיעוד שיחה, דשבורד admin, ניהול משתתפים/צוות/לו״ז, לפני-אחרי. |
 | `app/api/intake/*` | קליטה ממערכת החתימה ומנספח היעד. קוד ה-Apps Script ב-`apps-script/grip-intake.gs`. |
 | `app/api/cron/*` + `netlify/functions` | תזכורת יומית (20:00) וסיכום שבועי (מוצ״ש 21:00) בוואטסאפ. |
+| `app/api/auth/send-code` | Send SMS Hook של Supabase: קוד הכניסה נשלח בוואטסאפ (Green API). |
 
 ## הקמה
 
 1. **Supabase:** פרויקט חדש → SQL Editor → להריץ את `supabase/migrations/0001_schema.sql`.
-2. **Auth → Phone:** להפעיל התחברות בטלפון עם ספק SMS (Twilio / MessageBird / Vonage). בלי סיסמאות.
+2. **Auth → Phone:** להפעיל התחברות בטלפון. קוד הכניסה נשלח **בוואטסאפ** מהטלפון העסקי של גריפ (Green API)
+   דרך Send SMS Hook: Authentication → Hooks → Send SMS → HTTPS → `https://<site>/api/auth/send-code`,
+   ואת ה-secret שנוצר שמים ב-`SEND_CODE_HOOK_SECRET`. אין צורך ב-Twilio.
 3. **admin ראשון:** `insert into staff (full_name, phone, role) values ('אביב', '9725XXXXXXXX', 'admin');`
    (טלפון בפורמט ספרות בלבד, בלי `+` ובלי 0 מוביל). משם הכל מהממשק.
 4. **Netlify:** Base directory = `grip-challenge`. משתני הסביבה לפי `.env.example`.
    ה-scheduled functions נטענות מ-`netlify/functions`.
 5. **Apps Script:** להדביק את `apps-script/grip-intake.gs`, להגדיר `GRIP_URL` ו-`GRIP_INTAKE_SECRET`,
    ולקרוא ל-`gripOnSigned()` ול-`gripOnGoal()` מהמקומות הקיימים.
-6. **וואטסאפ:** לאשר ב-WhatsApp Manager שלוש תבניות בעברית:
-   - `grip_daily_reminder`: `היי {{1}}, עוד לא סימנת את היום. {{2}}`
-   - `grip_weekly_summary`: `היי {{1}}, סיכום השבוע: {{2}} {{3}}`
-   - `grip_staff_summary`: `היי {{1}}, {{2}} {{3}}`
-
-   בלי `WHATSAPP_TOKEN` ההודעות רק נרשמות ללוג (dry run).
+6. **וואטסאפ (Green API):** `GREEN_API_URL`, `GREEN_API_ID_INSTANCE`, `GREEN_API_TOKEN` מדף המופע ב-Green API.
+   קוד הכניסה, התזכורת היומית והסיכום השבועי יוצאים כולם מהמספר העסקי. בלי טוקן ההודעות רק נרשמות ללוג (dry run).
 7. **בוסטאפ:** כשיתברר ה-API, לממש את `fetchCheckIns` ב-`lib/attendance/boostapp.ts` ולהגדיר
    `ATTENDANCE_PROVIDER=boostapp`. שום מסך לא משתנה.
 

@@ -1,39 +1,28 @@
 import 'server-only'
-import type { Message } from './messages'
 
-// WhatsApp Cloud API (Meta). Business-initiated messages must use templates
-// approved in WhatsApp Manager; their names come from env so they can be
-// renamed without a deploy. Not configured → dry run (logged, not sent).
-const TOKEN = process.env.WHATSAPP_TOKEN || ''
-const PHONE_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || ''
-const LANG = process.env.WHATSAPP_TEMPLATE_LANG || 'he'
-const TEMPLATE_NAMES: Record<Message['template'], string> = {
-  daily_reminder: process.env.WHATSAPP_TEMPLATE_DAILY || 'grip_daily_reminder',
-  weekly_summary: process.env.WHATSAPP_TEMPLATE_WEEKLY || 'grip_weekly_summary',
-  staff_summary: process.env.WHATSAPP_TEMPLATE_STAFF || 'grip_staff_summary',
-}
+// WhatsApp through Green API: messages go out from Grip's business phone
+// (the instance linked in the Green API console). Plain text, no templates.
+// Not configured → dry run (logged, not sent).
+const API_URL = (process.env.GREEN_API_URL || 'https://api.green-api.com').replace(/\/+$/, '')
+const INSTANCE = process.env.GREEN_API_ID_INSTANCE || ''
+const TOKEN = process.env.GREEN_API_TOKEN || ''
 
-export const whatsappConfigured = () => !!(TOKEN && PHONE_ID)
+export const whatsappConfigured = () => !!(INSTANCE && TOKEN)
 
-export async function sendWhatsApp(to: string, msg: Message): Promise<{ status: 'sent' | 'dry_run' | 'failed'; detail?: string }> {
+export type SendResult = { status: 'sent' | 'dry_run' | 'failed'; detail?: string }
+
+/** `to` is digits-only E.164 (972501234567). */
+export async function sendWhatsApp(to: string, text: string): Promise<SendResult> {
   if (!whatsappConfigured()) {
-    console.info(`[whatsapp dry run] → ${to}: ${msg.text}`)
-    return { status: 'dry_run', detail: msg.text }
+    console.info(`[whatsapp dry run] → ${to}: ${text}`)
+    return { status: 'dry_run', detail: text }
   }
-  const res = await fetch(`https://graph.facebook.com/v21.0/${PHONE_ID}/messages`, {
+  const res = await fetch(`${API_URL}/waInstance${INSTANCE}/sendMessage/${TOKEN}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to,
-      type: 'template',
-      template: {
-        name: TEMPLATE_NAMES[msg.template],
-        language: { code: LANG },
-        components: [{ type: 'body', parameters: msg.params.map((text) => ({ type: 'text', text })) }],
-      },
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chatId: `${to}@c.us`, message: text }),
+    cache: 'no-store',
   })
   if (!res.ok) return { status: 'failed', detail: `HTTP ${res.status}: ${(await res.text()).slice(0, 300)}` }
-  return { status: 'sent' }
+  return { status: 'sent', detail: ((await res.json().catch(() => ({}))) as { idMessage?: string }).idMessage }
 }

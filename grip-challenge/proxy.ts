@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Keeps the Supabase session fresh on every navigation, and sends visitors
 // without a session to /login. Role checks happen in the pages (requireRole).
-const PUBLIC = ['/login', '/offline', '/api/intake', '/api/cron', '/auth']
+const PUBLIC = ['/login', '/offline', '/api/intake', '/api/cron', '/api/auth', '/auth']
 
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL

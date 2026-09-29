@@ -1,6 +1,7 @@
-// Outgoing WhatsApp messages (spec §10). Pure builders: the params go into
-// pre-approved WhatsApp templates; `text` is the same message in full, used
-// for logs and dry runs. Compare a participant only with their own last week.
+// Outgoing WhatsApp messages (spec §10). Pure builders: `text` is what is
+// sent; `params` are its variable parts, kept for tests and in case the
+// club later moves to template-based sending. Compare a participant only
+// with their own last week.
 import type { Row } from './data'
 import { REWARD_DAYS } from './program'
 

@@ -46,7 +46,7 @@ export default async function StaffAdmin() {
                 <option value="coach">מאמן</option><option value="nutritionist">תזונאית</option><option value="admin">admin</option>
               </select>
             </div>
-            <p className="hint">הכניסה בקוד SMS למספר הזה.</p>
+            <p className="hint">הכניסה בקוד שנשלח בוואטסאפ למספר הזה.</p>
           </ActionForm>
         </section>
       </div>
