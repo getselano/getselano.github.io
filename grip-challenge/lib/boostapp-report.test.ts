@@ -19,9 +19,9 @@ describe('Boostapp attendance report', () => {
     expect(r.to).toBe('2026-09-19')
     expect(r.visits[0]).toMatchObject({ phone: '972501234567', date: '2026-09-13', className: 'wod', attended: true })
   })
-  it('counts only redeemed group classes as attendance', () => {
+  it('counts every redeemed class, personal training included', () => {
     const r = parseAttendanceReport(rows)
-    expect(r.visits.map((v) => v.attended)).toEqual([true, false, false, false]) // cancelled, personal training, no-show
+    expect(r.visits.map((v) => v.attended)).toEqual([true, false, true, false]) // cancelled and no-show do not count
     expect(isAttended('פעיל/מומש')).toBe(true)
     expect(isAttended('ביטול מאוחר')).toBe(false)
   })

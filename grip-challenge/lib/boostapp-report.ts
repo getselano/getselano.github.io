@@ -31,10 +31,10 @@ export function isAttended(status: string): boolean {
 }
 
 /**
- * Classes that are not challenge workouts. Personal training sessions are
- * booked in Boostapp too; they are not part of the 18 group workouts.
+ * Classes that do not count as challenge workouts. Empty: every redeemed
+ * class counts, personal training and open gym included (club decision).
  */
-export const EXCLUDED_CLASSES = [/אימון אישי/]
+export const EXCLUDED_CLASSES: RegExp[] = []
 
 const HEADERS = { name: 'שם לקוח', phone: 'טלפון', className: 'שיעור', date: 'תאריך שיעור', status: 'סטטוס' } as const
 
