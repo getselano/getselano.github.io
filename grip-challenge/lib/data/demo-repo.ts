@@ -136,6 +136,15 @@ export class DemoUserRepo implements UserRepo {
     row.workout_confirmed_by = confirm ? staff.id : null
   }
 
+  async setCallSlot(participantId: string, weekday: number | null, time: string | null) {
+    const v = await this.viewer()
+    if (v?.role !== 'coach' && v?.role !== 'admin') throw new Error('not allowed')
+    await this.requireStaffFor(participantId)
+    const p = store().participants.find((x) => x.id === participantId)!
+    p.call_weekday = weekday
+    p.call_time = time
+  }
+
   async saveGoal(goal: Parameters<UserRepo['saveGoal']>[0]) {
     await this.requireStaffFor(goal.participant_id)
     const s = store()

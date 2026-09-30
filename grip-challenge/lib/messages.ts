@@ -6,7 +6,7 @@ import type { Row } from './data'
 import { REWARD_DAYS } from './program'
 
 export interface Message {
-  template: 'daily_reminder' | 'weekly_summary' | 'staff_summary' | 'welcome' | 'staff_new' | 'admin_new' | 'attendance_reminder'
+  template: 'daily_reminder' | 'weekly_summary' | 'staff_summary' | 'welcome' | 'staff_new' | 'admin_new' | 'attendance_reminder' | 'staff_alert' | 'digest' | 'call_today'
   params: string[]
   text: string
 }
@@ -149,4 +149,71 @@ export function attendanceReminder(adminName: string, activeCount: number, link:
     link,
   ].join('\n')
   return { template: 'attendance_reminder', params: [adminName, String(activeCount), link], text }
+}
+
+const first = (name: string) => name.split(' ')[0]
+
+/** To admins, once, when the nutritionist saves a participant's first goal (the intake call happened). */
+export function intakeDone(adminName: string, nutriName: string, participant: string, goalText: string, startWeight: number | null, link: string): Message {
+  const w = startWeight != null ? ` · משקל פתיחה: ${startWeight}` : ''
+  const text = `היי ${first(adminName)}, ✅ ${nutriName} סיים/ה שיחת קליטה עם ${participant}\nהיעד: ${goalText}${w}\n${link}`
+  return { template: 'staff_alert', params: [participant], text }
+}
+
+/** To admins, once, when the mental coach logs the first call with a participant. */
+export function firstCallDone(adminName: string, coachName: string, participant: string, link: string): Message {
+  return { template: 'staff_alert', params: [participant], text: `היי ${first(adminName)}, ✅ ${coachName} ביצע/ה שיחה ראשונה עם ${participant}\n${link}` }
+}
+
+/** To admins, once, when a participant reaches 36 marked days. */
+export function rewardEarned(adminName: string, participant: string, link: string): Message {
+  return {
+    template: 'staff_alert',
+    params: [participant],
+    text: `היי ${first(adminName)}, 🎉 ${participant} הגיע/ה ל-36 ימים מסומנים. לתאם את האימון האישי מתנה (250 ₪)\n${link}`,
+  }
+}
+
+/** To the participant, on the morning of their weekly call. */
+export function callToday(participant: string, coachName: string, time: string): Message {
+  return { template: 'call_today', params: [participant, time], text: `היי ${first(participant)}, היום ב-${time} שיחה שבועית עם ${first(coachName)} 💬` }
+}
+
+export interface CoachMorning {
+  today: { name: string; time: string }[]
+  weekEnding: { name: string; days: number }[]
+  noFirstCall: { name: string; days: number }[]
+}
+
+/** 08:00 to the mental coach. null when there is nothing to say. */
+export function coachMorning(coachName: string, d: CoachMorning, link: string): Message | null {
+  const lines: string[] = []
+  if (d.today.length) lines.push(`☀️ השיחות שלך היום: ${d.today.map((x) => `${x.name} ${x.time}`).join(', ')}`)
+  if (d.weekEnding.length)
+    lines.push(`⚠️ ייגמר השבוע בלי שיחה (עוד יום-יומיים יהפכו לאדום): ${d.weekEnding.map((x) => `${x.name} (${x.days} ימים)`).join(', ')}`)
+  if (d.noFirstCall.length) lines.push(`👋 עוד לא הייתה שיחת היכרות: ${d.noFirstCall.map((x) => `${x.name} (הצטרף/ה לפני ${x.days} ימים)`).join(', ')}`)
+  if (!lines.length) return null
+  return { template: 'digest', params: [coachName], text: [`בוקר טוב ${first(coachName)},`, ...lines, '', link].join('\n') }
+}
+
+/** 20:30 to the mental coach: today's slots with no call logged. null when none. */
+export function coachEvening(coachName: string, missing: string[], link: string): Message | null {
+  if (!missing.length) return null
+  return { template: 'digest', params: [coachName], text: `היי ${first(coachName)}, לא תועדה היום שיחה עם: ${missing.join(', ')}. בוצעה? לתעד כאן:\n${link}` }
+}
+
+export interface NutriMorning {
+  noLog: { name: string; days: number }[]
+  noGoal: { name: string; days: number }[]
+  ending: { name: string; endDate: string }[]
+}
+
+/** 09:00 to the nutritionist. null when there is nothing to say. */
+export function nutriMorning(nutriName: string, d: NutriMorning, link: string): Message | null {
+  const lines: string[] = []
+  if (d.noLog.length) lines.push(`• בלי דיווח תזונה: ${d.noLog.map((x) => `${x.name} (${x.days} ימים)`).join(', ')}`)
+  if (d.noGoal.length) lines.push(`• בלי יעד: ${d.noGoal.map((x) => `${x.name} (הצטרף/ה לפני ${x.days} ימים)`).join(', ')}`)
+  if (d.ending.length) lines.push(`• מסיימים בעוד יומיים, לתאם מדידת סיום ולסמן עמידה ביעד: ${d.ending.map((x) => `${x.name} (${dmy(x.endDate)})`).join(', ')}`)
+  if (!lines.length) return null
+  return { template: 'digest', params: [nutriName], text: [`בוקר טוב ${first(nutriName)}, 📋 לטיפול היום:`, ...lines, '', link].join('\n') }
 }

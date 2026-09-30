@@ -7,10 +7,10 @@ import { STATUS_LABEL, STATUS_SOFT } from '@/components/staff'
 import { WeightChart } from '@/components/WeightChart'
 import { attendanceIsSelfReported } from '@/lib/attendance'
 import { loadParticipant, requireRole, userRepo } from '@/lib/data'
-import { HEB_WEEKDAYS_SHORT, shortDate, todayIL, weekday } from '@/lib/dates'
+import { HEB_WEEKDAYS, HEB_WEEKDAYS_SHORT, shortDate, todayIL, weekday } from '@/lib/dates'
 import { displayPhone, whatsappLink } from '@/lib/phone'
 import { REWARD_DAYS, STATUS_COLORS } from '@/lib/program'
-import { confirmWorkoutAction, logCallAction, saveGoalAction } from '../../actions'
+import { confirmWorkoutAction, logCallAction, saveGoalAction, setCallSlotAction } from '../../actions'
 
 export default async function ParticipantDetail({ params }: { params: Promise<{ id: string }> }) {
   const v = await requireRole('coach', 'nutritionist', 'admin')
@@ -29,6 +29,8 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
     : []
   const calls = [...bundle.calls].sort((a, b) => (a.call_date < b.call_date ? 1 : -1))
   const canEditGoal = v.role === 'nutritionist' || v.role === 'admin'
+  const canSetSlot = v.role === 'coach' || v.role === 'admin'
+  const slotTime = p.call_time?.slice(0, 5) ?? ''
   const g = bundle.goal
   const first = p.full_name.split(' ')[0]
 
@@ -120,6 +122,34 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
         </div>
 
         <div className="stack" style={{ gap: 14 }}>
+          <section className="card" id="slot">
+            <div className="card-title">
+              <h2>שיחה שבועית קבועה</h2>
+              {p.call_weekday != null && slotTime ? <span className="pill">יום {HEB_WEEKDAYS[p.call_weekday]} · <span className="num">{slotTime}</span></span> : <span className="pill orange">לא נקבע</span>}
+            </div>
+            {canSetSlot ? (
+              <ActionForm action={setCallSlotAction} submit="שמירת מועד">
+                <input type="hidden" name="participant_id" value={p.id} />
+                <p className="hint" style={{ marginBottom: 10 }}>ביום השיחה ב-08:00 {first} מקבל/ת תזכורת בוואטסאפ, ואת/ה בסיכום הבוקר.</p>
+                <div className="form-grid">
+                  <div className="field">
+                    <label htmlFor="call_weekday">יום</label>
+                    <select id="call_weekday" name="call_weekday" defaultValue={p.call_weekday ?? ''}>
+                      <option value="">ללא מועד קבוע</option>
+                      {HEB_WEEKDAYS.slice(0, 6).map((d, i) => <option key={i} value={i}>{d}</option>)}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="call_time">שעה</label>
+                    <input id="call_time" name="call_time" type="time" step={900} defaultValue={slotTime} />
+                  </div>
+                </div>
+              </ActionForm>
+            ) : (
+              <p className="hint">המאמן/ת המנטלי/ת קובע/ת את המועד.</p>
+            )}
+          </section>
+
           <section className="card">
             <div className="card-title"><h2>תיעוד שיחה</h2></div>
             <ActionForm action={logCallAction} submit="שמירת שיחה" resetOnOk>

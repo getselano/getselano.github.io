@@ -141,6 +141,10 @@ export class SupabaseUserRepo implements UserRepo {
     must(await this.db.from('daily_logs').update(patch).eq('participant_id', participantId).eq('log_date', date))
   }
 
+  async setCallSlot(participantId: string, weekday: number | null, time: string | null) {
+    must(await this.db.rpc('set_call_slot', { pid: participantId, wd: weekday, t: time }))
+  }
+
   async saveGoal(goal: Goal) {
     const { id: _id, ...row } = goal
     must(await this.db.from('goals').upsert(row, { onConflict: 'participant_id' }))
