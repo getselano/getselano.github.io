@@ -1,4 +1,5 @@
-import { Calendar, Message, Phone } from '@/components/icons'
+import { Calendar, Logout, Message, Phone } from '@/components/icons'
+import { signOut } from '../../login/actions'
 import { HEB_WEEKDAYS } from '@/lib/dates'
 import { requireRole, userRepo } from '@/lib/data'
 import { displayPhone, whatsappLink } from '@/lib/phone'
@@ -41,6 +42,10 @@ export default async function MyTeamPage() {
           </div>
         </section>
       )}
+
+      <form action={signOut} style={{ marginTop: 8 }}>
+        <button className="btn ghost block"><Logout size={18} /> התנתקות</button>
+      </form>
     </main>
   )
 }
