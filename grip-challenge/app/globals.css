@@ -84,6 +84,22 @@ p { margin: 0; }
 .app.wide { max-width: 1040px; padding-bottom: 40px; }
 .app.nonav { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 
+/* Computer: the participant screens use the width, two cards per row.
+   Phones (under 900px) keep the single column. */
+@media (min-width: 900px) {
+  .app.wide { max-width: 1280px; padding-inline: 32px; }
+  .app:not(.wide):not(.nonav) {
+    max-width: 1120px;
+    padding-inline: 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+  .app:not(.wide):not(.nonav) > .greet,
+  .app:not(.wide):not(.nonav) > .full { grid-column: 1 / -1; }
+  .bottom-nav ul { max-width: 640px; }
+}
+
 .row { display: flex; align-items: center; gap: 10px; }
 .row.between { justify-content: space-between; }
 .stack { display: flex; flex-direction: column; gap: 10px; }
