@@ -37,6 +37,7 @@ describe('AttendanceProvider', () => {
     vi.stubEnv('ATTENDANCE_PROVIDER', 'boostapp')
     vi.stubEnv('BOOSTAPP_API_URL', 'https://boostapp.test')
     vi.stubEnv('BOOSTAPP_API_KEY', 'k')
+    vi.stubEnv('BOOSTAPP_ATTENDANCE_PATH', '/clients/check-ins')
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ items: [{ date: '2026-09-08' }, { date: '2026-09-10' }] }))))
     expect(attendanceProvider([bundle])).toBeInstanceOf(BoostappAttendanceProvider)
     const [b] = await withAttendance([bundle])
