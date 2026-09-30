@@ -26,6 +26,9 @@ export interface Participant {
   status: ParticipantStatus
   marketing_consent: boolean
   created_at: string
+  /** Weekly call slot with the mental coach (0 = Sunday, 'HH:MM'). */
+  call_weekday?: number | null
+  call_time?: string | null
 }
 
 export interface Goal {

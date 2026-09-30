@@ -1,6 +1,6 @@
 import { Calendar, Logout, Message, Phone } from '@/components/icons'
 import { signOut } from '../../login/actions'
-import { HEB_WEEKDAYS } from '@/lib/dates'
+import { HEB_WEEKDAYS, todayIL, weekday } from '@/lib/dates'
 import { requireRole, userRepo } from '@/lib/data'
 import { displayPhone, whatsappLink } from '@/lib/phone'
 import type { Staff } from '@/lib/types'
@@ -15,6 +15,11 @@ export default async function MyTeamPage() {
   const coach = staff.find((s) => s.id === p.coach_id)
   const nutri = staff.find((s) => s.id === p.nutritionist_id)
   const first = p.full_name.split(' ')[0]
+  const slotTime = p.call_time?.slice(0, 5)
+  const nextCall =
+    coach && p.call_weekday != null && slotTime
+      ? `${p.call_weekday === weekday(todayIL()) ? 'היום' : `ביום ${HEB_WEEKDAYS[p.call_weekday]}`} בשעה ${slotTime}`
+      : null
 
   return (
     <main className="app">
@@ -25,7 +30,7 @@ export default async function MyTeamPage() {
         </div>
       </header>
 
-      {coach && <Person s={coach} role="מאמן/ת מנטלי/ת" note="שיחה שבועית, אימונים ונוכחות" hello={`היי ${coach.full_name}, זה ${first} מאתגר 6 השבועות`} />}
+      {coach && <Person s={coach} role="מאמן/ת מנטלי/ת" note="שיחה שבועית, אימונים ונוכחות" hello={`היי ${coach.full_name}, זה ${first} מאתגר 6 השבועות`} next={nextCall} />}
       {nutri && <Person s={nutri} role="תזונאי/ת" note="התפריט, הדיווח היומי והיעד" hello={`היי ${nutri.full_name}, זה ${first} מאתגר 6 השבועות`} />}
       {!coach && !nutri && <div className="card muted">הצוות שלך ישובץ בימים הקרובים.</div>}
 
@@ -50,7 +55,7 @@ export default async function MyTeamPage() {
   )
 }
 
-function Person({ s, role, note, hello }: { s: Staff; role: string; note: string; hello: string }) {
+function Person({ s, role, note, hello, next }: { s: Staff; role: string; note: string; hello: string; next?: string | null }) {
   return (
     <section className="card">
       <div className="row" style={{ gap: 14 }}>
@@ -62,6 +67,12 @@ function Person({ s, role, note, hello }: { s: Staff; role: string; note: string
           <div className="muted small">{role} · {note}</div>
         </div>
       </div>
+      {next && (
+        <div className="row" style={{ gap: 8, marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'var(--accent-soft)' }}>
+          <Calendar size={18} style={{ color: 'var(--accent)' }} />
+          <span className="small">השיחה הבאה: <strong className="num">{next}</strong></span>
+        </div>
+      )}
       <div className="grid2" style={{ marginTop: 16 }}>
         <a className="btn accent small" href={whatsappLink(s.phone, hello)} target="_blank" rel="noreferrer"><Message size={18} /> וואטסאפ</a>
         <a className="btn light small" href={`tel:+${s.phone}`} aria-label={`התקשרות ל${s.full_name} ${displayPhone(s.phone)}`}><Phone size={18} /> שיחה</a>

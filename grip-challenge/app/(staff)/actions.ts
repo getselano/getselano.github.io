@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { requireRole, userRepo } from '@/lib/data'
 import { todayIL } from '@/lib/dates'
 import type { GoalType } from '@/lib/types'
+import { alertFirstCall, alertIntakeDone } from '@/lib/alerts'
 
 export type FormState = { ok?: string; error?: string } | null
 
@@ -16,10 +17,11 @@ function num(v: FormDataEntryValue | null): number | null {
 }
 
 export async function logCallAction(_: FormState, form: FormData): Promise<FormState> {
-  await requireRole('coach', 'nutritionist', 'admin')
+  const v = await requireRole('coach', 'nutritionist', 'admin')
   const participant_id = String(form.get('participant_id'))
   const call_date = String(form.get('call_date') || todayIL())
   if (!ISO.test(call_date) || call_date > todayIL()) return { error: 'תאריך לא תקין' }
+  const before = await (await userRepo()).bundle(participant_id)
   try {
     await (await userRepo()).logCall({
       participant_id,
@@ -31,6 +33,8 @@ export async function logCallAction(_: FormState, form: FormData): Promise<FormS
     console.error(e)
     return { error: 'השיחה לא נשמרה' }
   }
+  // The first call with this participant: tell the admins.
+  if (before && before.calls.length === 0) await alertFirstCall(participant_id, v.staff.full_name, before.participant.full_name)
   revalidatePath('/', 'layout')
   return { ok: 'השיחה נשמרה' }
 }
@@ -42,7 +46,8 @@ export async function confirmWorkoutAction(form: FormData) {
 }
 
 export async function saveGoalAction(_: FormState, form: FormData): Promise<FormState> {
-  await requireRole('nutritionist', 'admin')
+  const v = await requireRole('nutritionist', 'admin')
+  const before = await (await userRepo()).bundle(String(form.get('participant_id')))
   const goal_text = String(form.get('goal_text') || '').trim()
   if (!goal_text) return { error: 'צריך לכתוב את היעד' }
   const achieved = String(form.get('achieved') || '')
@@ -62,6 +67,25 @@ export async function saveGoalAction(_: FormState, form: FormData): Promise<Form
     console.error(e)
     return { error: 'היעד לא נשמר' }
   }
+  // The first goal means the intake call happened: tell the admins.
+  if (before && !before.goal) await alertIntakeDone(before.participant.id, v.staff.full_name, before.participant.full_name, goal_text, num(form.get('start_weight')))
   revalidatePath('/', 'layout')
   return { ok: 'היעד נשמר' }
+}
+
+/** The mental coach sets (or clears) the participant's fixed weekly call slot. */
+export async function setCallSlotAction(_: FormState, form: FormData): Promise<FormState> {
+  await requireRole('coach', 'admin')
+  const wdRaw = String(form.get('call_weekday') ?? '')
+  const time = String(form.get('call_time') ?? '').trim()
+  const clear = wdRaw === '' || !time
+  if (!clear && (!/^[0-6]$/.test(wdRaw) || !/^\d{2}:\d{2}/.test(time))) return { error: 'יום או שעה לא תקינים' }
+  try {
+    await (await userRepo()).setCallSlot(String(form.get('participant_id')), clear ? null : Number(wdRaw), clear ? null : time.slice(0, 5))
+  } catch (e) {
+    console.error(e)
+    return { error: 'לא נשמר' }
+  }
+  revalidatePath('/', 'layout')
+  return { ok: clear ? 'השעה הקבועה הוסרה' : 'השעה הקבועה נשמרה' }
 }

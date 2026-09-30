@@ -89,6 +89,8 @@ export function seedDemo(today = todayIL()): DemoStore {
       nutritionist_id: 'st-noa',
       status: p.status ?? 'active',
       marketing_consent: !!p.consent,
+      call_weekday: p.id === 'p-dana' ? 0 : p.id === 'p-yossi' ? weekday(today) : null,
+      call_time: p.id === 'p-dana' ? '10:00' : p.id === 'p-yossi' ? '18:30' : null,
       created_at: `${start}T09:00:00Z`,
     })
     const [w0, wGoal, perWeek] = p.weight ?? [80, 75, 0.8]

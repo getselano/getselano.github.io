@@ -1,6 +1,7 @@
 import 'server-only'
 import { earnedMilestones } from './calc'
 import { isDemo, SUPABASE_SERVICE_ROLE_KEY } from './env'
+import { alertRewardEarned } from './alerts'
 import { serviceRepo } from './data'
 import type { ParticipantBundle } from './types'
 
@@ -18,6 +19,7 @@ export async function syncMilestones(b: ParticipantBundle): Promise<string[]> {
     return []
   }
   await serviceRepo().addMilestones(b.participant.id, fresh)
+  if (fresh.includes('reward_earned')) await alertRewardEarned(b.participant.id, b.participant.full_name)
   return fresh
 }
 

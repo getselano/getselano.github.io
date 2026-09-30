@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { snapshot } from './calc'
 import { addDays } from './dates'
-import { adminNewParticipant, attendanceReminder, dailyReminder, staffNewParticipant, staffSummary, weeklySummary, welcomeMessage } from './messages'
+import { adminNewParticipant, attendanceReminder, callToday, coachEvening, coachMorning, firstCallDone, intakeDone, nutriMorning, rewardEarned, dailyReminder, staffNewParticipant, staffSummary, weeklySummary, welcomeMessage } from './messages'
 import type { DailyLog, Participant } from './types'
 
 const START = '2026-09-06' // Sunday
@@ -62,5 +62,22 @@ describe('messages', () => {
     expect(t).toContain('היי הדר, שבוע טוב!')
     expect(t).toContain('(7 משתתפים פעילים באתגר)')
     expect(t).toContain('https://x/admin/attendance')
+  })
+  it('staff alerts name the participant and link to them', () => {
+    expect(intakeDone('אביב גוילי', 'טל', 'רונית לוי', 'לרדת ל-72', 78, 'L').text).toBe('היי אביב, ✅ טל סיים/ה שיחת קליטה עם רונית לוי\nהיעד: לרדת ל-72 · משקל פתיחה: 78\nL')
+    expect(firstCallDone('הדר', 'לואיזה', 'רונית', 'L').text).toContain('✅ לואיזה ביצע/ה שיחה ראשונה עם רונית')
+    expect(rewardEarned('הדר', 'רונית', 'L').text).toContain('36 ימים')
+    expect(callToday('רונית לוי', 'לואיזה מור', '10:00').text).toBe('היי רונית, היום ב-10:00 שיחה שבועית עם לואיזה 💬')
+  })
+  it('digests say only what needs doing, and nothing when there is nothing', () => {
+    expect(coachMorning('לואיזה', { today: [], weekEnding: [], noFirstCall: [] }, 'L')).toBeNull()
+    const m = coachMorning('לואיזה', { today: [{ name: 'רונית', time: '10:00' }], weekEnding: [{ name: 'יוסי', days: 6 }], noFirstCall: [] }, 'L')!.text
+    expect(m).toContain('השיחות שלך היום: רונית 10:00')
+    expect(m).toContain('יוסי (6 ימים)')
+    expect(m).not.toContain('היכרות')
+    expect(coachEvening('לואיזה', [], 'L')).toBeNull()
+    expect(coachEvening('לואיזה', ['רונית'], 'L')!.text).toContain('לא תועדה היום שיחה עם: רונית')
+    expect(nutriMorning('טל', { noLog: [], noGoal: [], ending: [] }, 'L')).toBeNull()
+    expect(nutriMorning('טל', { noLog: [{ name: 'דנה', days: 2 }], noGoal: [], ending: [{ name: 'רונית', endDate: '2026-11-15' }] }, 'L')!.text).toContain('רונית (15.11.2026)')
   })
 })

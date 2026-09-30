@@ -50,6 +50,8 @@ describe.skipIf(!url)('row level security', () => {
     await db.connect()
     await db.query(readFileSync(join(root, 'tests/supabase_shim.sql'), 'utf8'))
     await db.query(readFileSync(join(root, 'supabase/migrations/0001_schema.sql'), 'utf8'))
+    await db.query(readFileSync(join(root, 'supabase/migrations/0002_deals.sql'), 'utf8'))
+    await db.query(readFileSync(join(root, 'supabase/migrations/0003_call_slots.sql'), 'utf8'))
     await db.query(`
       insert into auth.users (id, phone) values
         ('${U.admin}', '972500000001'), ('${U.coach1}', '972500000002'), ('${U.coach2}', '972500000003'),
@@ -168,6 +170,13 @@ describe.skipIf(!url)('row level security', () => {
       expect(no).toEqual([])
     })
 
+    it('sets the weekly call slot for assigned participants only', async () => {
+      const ok = await as('coach1', `select set_call_slot($1, 0::smallint, '10:00'::time)`, [P.p1])
+      expect(ok).toHaveLength(1)
+      await expect(as('coach1', `select set_call_slot($1, 0::smallint, '10:00'::time)`, [P.p2])).rejects.toThrow(/not allowed/)
+      await expect(as('p1', `select set_call_slot($1, 0::smallint, '10:00'::time)`, [P.p1])).rejects.toThrow(/not allowed/)
+    })
+
     it('cannot create participants or staff', async () => {
       await expect(
         as('coach1', `insert into participants (full_name, phone, start_date, end_date) values ('x', '972511111111', il_today(), il_today() + 41)`),
@@ -202,6 +211,16 @@ describe.skipIf(!url)('row level security', () => {
       )
       expect(row.n).toBe(1)
       expect(await as('admin', `update participants set price = 2000 where id = $1 returning id`, [P.p2])).toHaveLength(1)
+    })
+  })
+
+  describe('deals', () => {
+    it('are admin-only', async () => {
+      await db.query(`insert into participant_deals (participant_id, id_number, price) values ('${P.p1}', '012345678', 2500)`)
+      expect(await as('admin', 'select id_number from participant_deals')).toHaveLength(1)
+      expect(await as('coach1', 'select * from participant_deals')).toEqual([])
+      expect(await as('nutri', 'select * from participant_deals')).toEqual([])
+      expect(await as('p1', 'select * from participant_deals')).toEqual([])
     })
   })
 

@@ -50,6 +50,8 @@ export interface UserRepo {
   logCall(call: Omit<CoachCall, 'id' | 'staff_id'>): Promise<void>
   confirmWorkout(participantId: string, date: ISODate, confirm: boolean): Promise<void>
   saveGoal(goal: Goal): Promise<void>
+  /** Fixed weekly call slot with the mental coach; null clears it. */
+  setCallSlot(participantId: string, weekday: number | null, time: string | null): Promise<void>
 
   // admin
   saveParticipant(input: ParticipantInput, id?: string): Promise<string>
