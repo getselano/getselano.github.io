@@ -6,7 +6,7 @@ import type { Row } from './data'
 import { REWARD_DAYS } from './program'
 
 export interface Message {
-  template: 'daily_reminder' | 'weekly_summary' | 'staff_summary' | 'welcome' | 'staff_new' | 'admin_new'
+  template: 'daily_reminder' | 'weekly_summary' | 'staff_summary' | 'welcome' | 'staff_new' | 'admin_new' | 'attendance_reminder'
   params: string[]
   text: string
 }
@@ -136,4 +136,17 @@ export function adminNewParticipant(
       : []),
   ].join('\n')
   return { template: 'admin_new', params: [adminName, p.full_name, String(p.price)], text }
+}
+
+/** Saturday evening, to each admin: export the week's attendance from Boostapp and upload it. */
+export function attendanceReminder(adminName: string, activeCount: number, link: string): Message {
+  const text = [
+    `היי ${adminName.split(' ')[0]}, שבוע טוב!`,
+    `הגיע הזמן לקלוט את נוכחות השבוע מבוסטאפ${activeCount ? ` (${activeCount} משתתפים פעילים באתגר)` : ''}.`,
+    '',
+    '1. בבוסטאפ: דוחות ← דוח נוכחות ← השבוע האחרון ← ייצוא לאקסל',
+    '2. להעלות את הקובץ כאן:',
+    link,
+  ].join('\n')
+  return { template: 'attendance_reminder', params: [adminName, String(activeCount), link], text }
 }

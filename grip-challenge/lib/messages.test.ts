@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { snapshot } from './calc'
 import { addDays } from './dates'
-import { adminNewParticipant, dailyReminder, staffNewParticipant, staffSummary, weeklySummary, welcomeMessage } from './messages'
+import { adminNewParticipant, attendanceReminder, dailyReminder, staffNewParticipant, staffSummary, weeklySummary, welcomeMessage } from './messages'
 import type { DailyLog, Participant } from './types'
 
 const START = '2026-09-06' // Sunday
@@ -56,5 +56,11 @@ describe('messages', () => {
     const m = adminNewParticipant('הדר', p, { nutritionist: 'טל', coach: 'לואיזה' }, 'https://x/admin/1', 'אביב').text
     expect(m).toContain('⚠️ הטלפון שנרשם בהסכם (054-451-0185) הוא של אביב')
     expect(adminNewParticipant('הדר', p, { nutritionist: 'טל', coach: 'לואיזה' }, 'l').text).not.toContain('⚠️')
+  })
+  it('reminds admins to upload the weekly Boostapp report', () => {
+    const t = attendanceReminder('הדר כהן', 7, 'https://x/admin/attendance').text
+    expect(t).toContain('היי הדר, שבוע טוב!')
+    expect(t).toContain('(7 משתתפים פעילים באתגר)')
+    expect(t).toContain('https://x/admin/attendance')
   })
 })
