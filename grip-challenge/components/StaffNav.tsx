@@ -10,6 +10,7 @@ export function StaffNav({ admin }: { admin: boolean }) {
         { href: '/team', label: 'משתתפים' },
         { href: '/admin/participants', label: 'ניהול' },
         { href: '/admin/staff', label: 'צוות' },
+        { href: '/admin/attendance', label: 'נוכחות' },
         { href: '/admin/schedule', label: 'לו״ז' },
       ]
     : [{ href: '/team', label: 'המשתתפים שלי' }]

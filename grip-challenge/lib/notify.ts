@@ -3,7 +3,7 @@ import { withAttendance } from './attendance'
 import { snapshot } from './calc'
 import { serviceRepo, type Row } from './data'
 import { todayIL } from './dates'
-import { dailyReminder, staffSummary, weeklySummary, type Message } from './messages'
+import { attendanceReminder, dailyReminder, staffSummary, weeklySummary, type Message } from './messages'
 import { sendWhatsApp } from './whatsapp'
 
 async function currentRows(): Promise<{ rows: Row[]; today: string }> {
@@ -53,5 +53,14 @@ export async function runWeeklySummary() {
     if (!mine.length) continue
     out.push(await deliver('staff_summary', s.id, s.phone, staffSummary(s.full_name, mine), today))
   }
+  return out
+}
+
+/** Saturday 19:30: each admin is reminded to upload the week's Boostapp attendance report. */
+export async function runAttendanceReminder(appUrl: string) {
+  const { rows, today } = await currentRows()
+  const out: Outcome[] = []
+  for (const a of (await serviceRepo().staff()).filter((s) => s.role === 'admin'))
+    out.push(await deliver('attendance_reminder', a.id, a.phone, attendanceReminder(a.full_name, rows.length, `${appUrl}/admin/attendance`), today))
   return out
 }

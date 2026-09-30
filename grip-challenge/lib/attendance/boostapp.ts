@@ -2,9 +2,13 @@ import { todayIL } from '../dates'
 import type { AttendanceProvider, AttendanceRecord } from './provider'
 
 /**
- * Skeleton for Boostapp. Whether Boostapp exposes an attendance API is still
- * being checked; when it is, fill in `fetchCheckIns` and turn it on with
- * ATTENDANCE_PROVIDER=boostapp (plus BOOSTAPP_API_URL / BOOSTAPP_API_KEY).
+ * Boostapp. What is known from Boostapp support:
+ *   base URL  https://rest.lee.co.il   (e.g. POST /leads/create-new-lead)
+ *   auth      header `x-api-key: <business API KEY>` (Settings → General → Business details)
+ *   requests  POST with a JSON body
+ * Still missing: the endpoint that returns a client's check-ins. Once known,
+ * set BOOSTAPP_ATTENDANCE_PATH (and adjust `fetchCheckIns` to its response),
+ * then turn it on with ATTENDANCE_PROVIDER=boostapp.
  *
  * Participants are matched to Boostapp clients by phone number.
  */
@@ -13,12 +17,13 @@ export class BoostappAttendanceProvider implements AttendanceProvider {
 
   constructor(
     private readonly phoneFor: (participantId: string) => Promise<string | null>,
-    private readonly apiUrl = process.env.BOOSTAPP_API_URL || '',
+    private readonly apiUrl = process.env.BOOSTAPP_API_URL || 'https://rest.lee.co.il',
     private readonly apiKey = process.env.BOOSTAPP_API_KEY || '',
+    private readonly attendancePath = process.env.BOOSTAPP_ATTENDANCE_PATH || '',
   ) {}
 
   isAvailable(): boolean {
-    return !!(this.apiUrl && this.apiKey)
+    return !!(this.apiUrl && this.apiKey && this.attendancePath)
   }
 
   async getAttendance(participantId: string, from: Date, to: Date): Promise<AttendanceRecord[]> {
@@ -35,12 +40,14 @@ export class BoostappAttendanceProvider implements AttendanceProvider {
    * Expected to return one entry per class the client checked into.
    */
   protected async fetchCheckIns(phone: string, from: string, to: string): Promise<{ date: string }[]> {
-    const url = new URL('/attendance', this.apiUrl)
-    url.searchParams.set('phone', phone)
-    url.searchParams.set('from', from)
-    url.searchParams.set('to', to)
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${this.apiKey}` }, cache: 'no-store' })
+    const res = await fetch(new URL(this.attendancePath, this.apiUrl), {
+      method: 'POST',
+      headers: { 'x-api-key': this.apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, from, to }),
+      cache: 'no-store',
+    })
     if (!res.ok) throw new Error(`Boostapp attendance: HTTP ${res.status}`)
+    // TODO(boostapp): map the real response shape once the endpoint is documented.
     const body = (await res.json()) as { items?: { date: string }[] }
     return body.items ?? []
   }
