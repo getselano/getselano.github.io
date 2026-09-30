@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // The Boostapp attendance report is uploaded through a server action.
+  experimental: { serverActions: { bodySizeLimit: '5mb' } },
   async headers() {
     return [
       {
