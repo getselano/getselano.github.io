@@ -2,6 +2,7 @@
 // Used only when no Supabase project is configured.
 import { addDays, rangeDays, todayIL, weekday } from '../dates'
 import { PROGRAM_DAYS } from '../program'
+import type { GoalIntakeLog } from './repo'
 import type { CoachCall, DailyLog, Deal, Goal, Milestone, Participant, ScheduleSlot, Staff } from '../types'
 
 export interface DemoStore {
@@ -14,6 +15,7 @@ export interface DemoStore {
   schedule: ScheduleSlot[]
   deals: Deal[]
   notifications: { kind: string; recipient: string; sent_on: string; status: string; detail?: string }[]
+  goalIntakeLog: (GoalIntakeLog & { received_at: string })[]
 }
 
 export const DEMO_STAFF: Staff[] = [
@@ -95,6 +97,7 @@ export function seedDemo(today = todayIL()): DemoStore {
     })
     const [w0, wGoal, perWeek] = p.weight ?? [80, 75, 0.8]
     goals.push({
+      id: `goal-${p.id}`,
       participant_id: p.id,
       goal_type: 'weight',
       goal_text: p.goalText ?? `להגיע ל-${wGoal} ק"ג`,
@@ -104,6 +107,12 @@ export function seedDemo(today = todayIL()): DemoStore {
       start_measurements: null,
       set_at: start,
       achieved: p.status === 'completed' ? true : null,
+      recorded_at: `${start}T12:00:00Z`,
+      recorded_by: 'st-noa',
+      source: 'platform',
+      // Lior (day 2) has not confirmed yet: shows the staff flag.
+      confirmed_at: p.id === 'p-lior' ? null : `${start}T18:00:00Z`,
+      superseded_by: null,
     })
 
     const last = addDays(start, Math.min(p.day, PROGRAM_DAYS) - 1)
@@ -182,14 +191,14 @@ export function seedDemo(today = todayIL()): DemoStore {
     agreement_url: null,
   }))
 
-  return { staff: DEMO_STAFF.map((s) => ({ ...s })), participants, goals, logs, calls, milestones, schedule, deals, notifications: [] }
+  return { staff: DEMO_STAFF.map((s) => ({ ...s })), participants, goals, logs, calls, milestones, schedule, deals, notifications: [], goalIntakeLog: [] }
 }
 
 /** Who can be picked on the demo login screen. */
 export const DEMO_PERSONAS = [
   { id: 'p-dana', label: 'דנה', hint: 'משתתפת · יום 23' },
   { id: 'p-yossi', label: 'יוסי', hint: 'משתתף · רגע הזכייה' },
-  { id: 'st-ron', label: 'רון', hint: 'מאמן' },
+  { id: 'st-ron', label: 'רון', hint: 'מאמן מנטלי' },
   { id: 'st-noa', label: 'נועה', hint: 'תזונאית' },
   { id: 'st-aviv', label: 'אביב', hint: 'admin' },
 ]

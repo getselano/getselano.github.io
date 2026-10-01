@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Alert, Target } from '@/components/icons'
-import { byUrgency, isCurrent, ParticipantRow } from '@/components/staff'
+import { byUrgency, isCurrent, ParticipantRow, GoalPendingBanner } from '@/components/staff'
 import { loadRows, requireRole } from '@/lib/data'
 import { STATUS_COLORS } from '@/lib/program'
 
@@ -35,6 +35,8 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
           <h1>הצוות</h1>
         </div>
       </header>
+
+      <GoalPendingBanner rows={all} />
 
       <nav className="tabs" aria-label="סינון לפי סטטוס">
         {tabs.map((t) => (

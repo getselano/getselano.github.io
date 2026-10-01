@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Row } from '@/lib/data'
 import type { StatusColor } from '@/lib/calc'
 import { STATUS_COLORS } from '@/lib/program'
-import { Flame } from './icons'
+import { Flame, Target } from './icons'
 
 export const STATUS_LABEL: Record<StatusColor, string> = { red: 'אדום', yellow: 'צהוב', green: 'ירוק' }
 export const STATUS_SOFT: Record<StatusColor, string> = { red: '#FCEDE9', yellow: '#FDF0E0', green: '#E3F1EB' }
@@ -23,6 +23,28 @@ export function isCurrent(r: Row) {
   return r.bundle.participant.status === 'active' && r.snap.started && !r.snap.finished
 }
 
+/** A goal is on file but the participant has not pressed "זה היעד שלי" yet. */
+export const goalPending = (r: Row) => !!r.bundle.goal && !r.bundle.goal.confirmed_at && r.bundle.participant.status !== 'cancelled'
+
+export function GoalPendingBanner({ rows }: { rows: Row[] }) {
+  const pending = rows.filter(goalPending)
+  if (!pending.length) return null
+  return (
+    <section className="card soft-orange banner" aria-label="ממתין לאישור יעד">
+      <Target size={22} style={{ color: 'var(--streak-deep)' }} />
+      <div>
+        <strong>{pending.length === 1 ? 'משתתף אחד ממתין לאישור יעד' : `${pending.length} משתתפים ממתינים לאישור יעד`}</strong>
+        <p className="small" style={{ marginTop: 2 }}>המסך יופיע להם בכניסה הבאה לאפליקציה. אם לא נכנסו, כדאי לשלוח להם הודעה:</p>
+        <p className="small" style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {pending.map((r) => (
+            <Link key={r.bundle.participant.id} href={`/team/${r.bundle.participant.id}#goal`} className="link">{r.bundle.participant.full_name}</Link>
+          ))}
+        </p>
+      </div>
+    </section>
+  )
+}
+
 export function ParticipantRow({ r }: { r: Row }) {
   const p = r.bundle.participant
   const c = r.snap.status.color
@@ -36,6 +58,7 @@ export function ParticipantRow({ r }: { r: Row }) {
           {p.full_name}
           <span className="hint">יום <span className="num">{r.snap.dayNumber}</span></span>
           {!r.bundle.goal && <span className="pill orange">חסר יעד</span>}
+          {goalPending(r) && <span className="pill orange">ממתין לאישור יעד</span>}
         </span>
         <span className="why" style={{ color: c === 'green' ? 'var(--ink-2)' : color, display: 'block' }}>
           {why}

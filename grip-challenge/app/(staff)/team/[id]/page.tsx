@@ -4,10 +4,11 @@ import { ActionForm } from '@/components/ActionForm'
 import { Message, Phone } from '@/components/icons'
 import { WeekStrip, fmt, Frac } from '@/components/participant'
 import { STATUS_LABEL, STATUS_SOFT } from '@/components/staff'
+import { GOAL_TYPE_LABEL } from '@/components/GoalConfirm'
 import { WeightChart } from '@/components/WeightChart'
 import { attendanceIsSelfReported } from '@/lib/attendance'
 import { loadParticipant, requireRole, userRepo } from '@/lib/data'
-import { HEB_WEEKDAYS, HEB_WEEKDAYS_SHORT, shortDate, todayIL, weekday } from '@/lib/dates'
+import { dateTimeIL, HEB_WEEKDAYS, HEB_WEEKDAYS_SHORT, shortDate, todayIL, weekday } from '@/lib/dates'
 import { displayPhone, whatsappLink } from '@/lib/phone'
 import { REWARD_DAYS, STATUS_COLORS } from '@/lib/program'
 import { confirmWorkoutAction, logCallAction, saveGoalAction, setCallSlotAction } from '../../actions'
@@ -17,7 +18,8 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
   const { id } = await params
   const row = await loadParticipant(id)
   if (!row) notFound()
-  const staff = await (await userRepo()).staff()
+  const repo = await userRepo()
+  const [staff, history] = await Promise.all([repo.staff(), repo.goalHistory(id)])
   const { bundle, snap } = row
   const p = bundle.participant
   const color = STATUS_COLORS[snap.status.color]
@@ -32,6 +34,7 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
   const canSetSlot = v.role === 'coach' || v.role === 'admin'
   const slotTime = p.call_time?.slice(0, 5) ?? ''
   const g = bundle.goal
+  const previous = history.filter((x) => x.superseded_by)
   const first = p.full_name.split(' ')[0]
 
   return (
@@ -40,7 +43,7 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
         <div>
           <p className="hello"><Link href="/team" className="link">המשתתפים</Link> / יום <span className="num">{snap.dayNumber}</span></p>
           <h1>{p.full_name}</h1>
-          <p className="muted small">מאמן/ת: {staffName(p.coach_id)} · תזונאי/ת: {staffName(p.nutritionist_id)}</p>
+          <p className="muted small">מאמן/ת מנטלי/ת: {staffName(p.coach_id)} · תזונאי/ת: {staffName(p.nutritionist_id)}</p>
         </div>
         <div className="row">
           <a className="btn accent small" href={whatsappLink(p.phone, `היי ${first}`)} target="_blank" rel="noreferrer"><Message size={18} /> וואטסאפ</a>
@@ -57,7 +60,7 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
         {snap.status.reasons.length ? (
           <ul style={{ margin: '8px 0 0', paddingInlineStart: 18 }}>
             {snap.status.reasons.map((r) => (
-              <li key={r.code} style={{ color: STATUS_COLORS[r.color] }}>{r.text} <span className="hint">· {r.owner === 'coach' ? 'מאמן/ת' : 'תזונאי/ת'}</span></li>
+              <li key={r.code} style={{ color: STATUS_COLORS[r.color] }}>{r.text} <span className="hint">· {r.owner === 'coach' ? 'מאמן/ת מנטלי/ת' : 'תזונאי/ת'}</span></li>
             ))}
           </ul>
         ) : (
@@ -182,11 +185,26 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
             </div>
           </section>
 
-          <section className="card" id="goal" style={g ? undefined : { border: '1.5px solid var(--streak)' }}>
-            <div className="card-title"><h2>היעד</h2>{!g && <span className="pill orange">חסר יעד</span>}</div>
+          <section className="card" id="goal" style={g?.confirmed_at ? undefined : { border: '1.5px solid var(--streak)' }}>
+            <div className="card-title">
+              <h2>היעד</h2>
+              {!g ? <span className="pill orange">חסר יעד</span> : g.confirmed_at ? <span className="pill green">אושר</span> : <span className="pill orange">ממתין לאישור יעד</span>}
+            </div>
+            {g?.recorded_at && (
+              <div className="goal-record">
+                <div>תועד <span className="num">{dateTimeIL(g.recorded_at)}</span> · {g.source === 'goal_form' ? 'מטופס החתימה' : `בפלטפורמה${g.recorded_by ? ` ע״י ${staffName(g.recorded_by)}` : ''}`}</div>
+                {g.confirmed_at ? (
+                  <div>אושר ע״י המשתתף <span className="num">{dateTimeIL(g.confirmed_at)}</span>{g.source === 'goal_form' ? ' (בחתימה)' : ''}</div>
+                ) : (
+                  <div style={{ color: 'var(--streak-deep)' }}>ממתין לאישור המשתתף. יוצג לו בכניסה הבאה לאפליקציה.</div>
+                )}
+                {g.external_pdf_url && <a className="link" href={g.external_pdf_url} target="_blank" rel="noreferrer">נספח היעד החתום (PDF)</a>}
+              </div>
+            )}
             {canEditGoal ? (
               <ActionForm action={saveGoalAction} submit="שמירת יעד">
                 <input type="hidden" name="participant_id" value={p.id} />
+                {g?.confirmed_at && <p className="hint">היעד אושר ולכן לא נערך. שינוי ביעד או בנקודת הפתיחה יישמר כגרסה חדשה שהמשתתף יאשר מחדש, והגרסה הקודמת נשמרת. עדכון &quot;עמידה ביעד&quot; בלבד לא יוצר גרסה.</p>}
                 <div className="field">
                   <label htmlFor="goal_text">היעד במילים</label>
                   <input id="goal_text" name="goal_text" type="text" defaultValue={g?.goal_text ?? ''} required />
@@ -207,7 +225,7 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
                   <div className="field"><label htmlFor="start_body_fat">אחוז שומן בפתיחה</label><input id="start_body_fat" name="start_body_fat" type="number" step="0.1" defaultValue={g?.start_body_fat ?? ''} /></div>
                 </div>
                 <div className="field"><label htmlFor="start_measurements">היקפים בפתיחה</label><input id="start_measurements" name="start_measurements" type="text" defaultValue={g?.start_measurements ?? ''} /></div>
-                <input type="hidden" name="set_at" value={g?.set_at ?? ''} />
+                <div className="field"><label htmlFor="goal_why">למה זה חשוב לו/ה</label><input id="goal_why" name="goal_why" type="text" defaultValue={g?.goal_why ?? ''} /></div>
                 <div className="field">
                   <label htmlFor="achieved">עמידה ביעד (ממולא ביום 42)</label>
                   <select id="achieved" name="achieved" defaultValue={g?.achieved == null ? '' : g.achieved ? 'yes' : 'no'}>
@@ -219,6 +237,21 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
               </ActionForm>
             ) : (
               <p>{g?.goal_text ?? <span className="hint">עוד לא נקבע יעד</span>}</p>
+            )}
+            {previous.length > 0 && (
+              <details className="goal-history">
+                <summary>גרסאות קודמות (<span className="num">{previous.length}</span>)</summary>
+                {previous.map((x) => (
+                  <div key={x.id} className="goal-version">
+                    <strong>{x.goal_text}</strong>
+                    <div className="hint">
+                      {GOAL_TYPE_LABEL[x.goal_type]}{x.start_weight != null ? ` · פתיחה ${x.start_weight} ק״ג` : ''} · תועד {x.recorded_at ? dateTimeIL(x.recorded_at) : '—'} ·{' '}
+                      {x.confirmed_at ? `אושר ${dateTimeIL(x.confirmed_at)}` : 'לא אושר'}
+                      {x.external_pdf_url && <> · <a className="link" href={x.external_pdf_url} target="_blank" rel="noreferrer">PDF</a></>}
+                    </div>
+                  </div>
+                ))}
+              </details>
             )}
           </section>
         </div>

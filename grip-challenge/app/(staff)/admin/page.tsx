@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Alert } from '@/components/icons'
-import { initials, STATUS_SOFT } from '@/components/staff'
+import { GoalPendingBanner, initials, STATUS_SOFT } from '@/components/staff'
 import { WeekBars } from '@/components/WeekBars'
 import { loadRows, requireRole, userRepo } from '@/lib/data'
 import { dashboard } from '@/lib/dashboard'
@@ -28,6 +28,8 @@ export default async function AdminDashboard() {
           <h1>דשבורד</h1>
         </div>
       </header>
+
+      <GoalPendingBanner rows={rows} />
 
       {unassigned.length > 0 && (
         <section className="card soft-orange banner" aria-label="ממתינים לשיבוץ">

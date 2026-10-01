@@ -1,7 +1,10 @@
 'use server'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { clientIp } from '@/lib/client-ip'
 import { encouragement } from '@/lib/calc'
-import { requireRole, userRepo } from '@/lib/data'
+import { requireRole, serviceRepo, userRepo } from '@/lib/data'
 import type { MarkField } from '@/lib/data/repo'
 import { participantView, remainingToday } from '@/lib/participant-view'
 import type { MilestoneKind } from '@/lib/types'
@@ -49,4 +52,13 @@ export async function markWinSeen(kind: MilestoneKind = 'reward_earned') {
   await requireRole('participant')
   await (await userRepo()).markMilestoneSeen(kind)
   revalidatePath('/', 'layout')
+}
+
+/** "זה היעד שלי": confirms the current goal, with the IP the server saw. */
+export async function confirmGoalAction() {
+  const v = await requireRole('participant')
+  const ip = clientIp(await headers())
+  await serviceRepo().confirmGoal(v.participant.id, ip)
+  revalidatePath('/', 'layout')
+  redirect('/')
 }
