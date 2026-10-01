@@ -42,7 +42,18 @@ export interface Goal {
   start_measurements: string | null
   set_at: ISODate | null
   achieved: boolean | null
+  goal_why?: string | null
+  // The record (migration 0004). Written once; a confirmed goal is never edited.
+  recorded_at?: string
+  recorded_by?: string | null
+  source?: GoalSource
+  confirmed_at?: string | null
+  confirmation_ip?: string | null
+  external_pdf_url?: string | null
+  superseded_by?: string | null
 }
+
+export type GoalSource = 'platform' | 'goal_form'
 
 export interface DailyLog {
   participant_id?: string

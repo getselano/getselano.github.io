@@ -37,6 +37,8 @@ export interface UserRepo {
   bundle(participantId: string): Promise<ParticipantBundle | null>
   /** Participants the viewer is assigned to (admin: all). */
   bundles(): Promise<ParticipantBundle[]>
+  /** The current (not superseded) goal. */
+  currentGoal(participantId: string): Promise<Goal | null>
   staff(): Promise<Staff[]>
   schedule(): Promise<ScheduleSlot[]>
   /** Deal details from the signing system (admin only; null for everyone else). */
@@ -49,7 +51,10 @@ export interface UserRepo {
   // staff
   logCall(call: Omit<CoachCall, 'id' | 'staff_id'>): Promise<void>
   confirmWorkout(participantId: string, date: ISODate, confirm: boolean): Promise<void>
+  /** Through save_goal(): edits an unconfirmed goal, versions a confirmed one. */
   saveGoal(goal: Goal): Promise<void>
+  /** Every version of the participant's goal, newest first. */
+  goalHistory(participantId: string): Promise<Goal[]>
   /** Fixed weekly call slot with the mental coach; null clears it. */
   setCallSlot(participantId: string, weekday: number | null, time: string | null): Promise<void>
 
@@ -82,6 +87,39 @@ export interface ServiceRepo {
   /** Records a send; false if this (kind, recipient, day) was already sent. */
   claimNotification(kind: string, recipient: string, day: ISODate): Promise<boolean>
   finishNotification(kind: string, recipient: string, day: ISODate, status: string, detail?: string): Promise<void>
+  /** The participant's "this is my goal", with the IP the server saw. False if nothing was waiting. */
+  confirmGoal(participantId: string, ip: string | null): Promise<boolean>
+  /**
+   * A goal signed in the signing form. Matches the participant by phone
+   * (creating them if needed). The same phone + signedAt twice → the first
+   * goal, untouched.
+   */
+  intakeGoal(input: GoalIntake): Promise<{ participantId: string; goalId: string; duplicate: boolean; createdParticipant: boolean }>
+  logGoalIntake(entry: GoalIntakeLog): Promise<void>
+}
+
+export interface GoalIntake {
+  phone: string
+  full_name: string
+  email: string | null
+  start_date: ISODate | null
+  /** ISO 8601, normalized. Also the confirmation time: the signature is the confirmation. */
+  signed_at: string
+  pdf_url: string | null
+  goal: Pick<Goal, 'goal_type' | 'goal_text' | 'goal_why' | 'start_weight' | 'start_body_fat' | 'start_measurements'>
+  details: Record<string, string | null>
+}
+
+export interface GoalIntakeLog {
+  status: number
+  outcome: 'recorded' | 'duplicate' | 'bad_secret' | 'bad_json' | 'invalid' | 'error'
+  ip: string | null
+  phone?: string | null
+  signed_at?: string | null
+  participant_id?: string | null
+  goal_id?: string | null
+  detail?: string | null
+  payload?: unknown
 }
 
 export interface SignupInput {

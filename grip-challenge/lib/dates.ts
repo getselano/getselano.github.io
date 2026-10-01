@@ -72,3 +72,10 @@ export function fullDate(d: ISODate): string {
   const [y, m, day] = d.split('-')
   return `${Number(day)}.${Number(m)}.${y}`
 }
+
+const dateTimeFmt = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+/** A timestamp as Jerusalem date and time: "1.10.2026, 12:15". */
+export function dateTimeIL(ts: string): string {
+  return dateTimeFmt.format(new Date(ts))
+}

@@ -60,7 +60,8 @@ export async function saveGoalAction(_: FormState, form: FormData): Promise<Form
       start_weight: num(form.get('start_weight')),
       start_body_fat: num(form.get('start_body_fat')),
       start_measurements: String(form.get('start_measurements') || '').trim() || null,
-      set_at: String(form.get('set_at') || '') || todayIL(),
+      goal_why: String(form.get('goal_why') || '').trim() || null,
+      set_at: null, // kept on edit; the recording day on a new version
       achieved: achieved === 'yes' ? true : achieved === 'no' ? false : null,
     })
   } catch (e) {
@@ -70,7 +71,9 @@ export async function saveGoalAction(_: FormState, form: FormData): Promise<Form
   // The first goal means the intake call happened: tell the admins.
   if (before && !before.goal) await alertIntakeDone(before.participant.id, v.staff.full_name, before.participant.full_name, goal_text, num(form.get('start_weight')))
   revalidatePath('/', 'layout')
-  return { ok: 'היעד נשמר' }
+  const after = await (await userRepo()).currentGoal(String(form.get('participant_id')))
+  const versioned = !!before?.goal?.id && !!after?.id && after.id !== before.goal.id
+  return { ok: versioned ? 'נשמרה גרסה חדשה של היעד. המשתתף יתבקש לאשר אותה' : 'היעד נשמר' }
 }
 
 /** The mental coach sets (or clears) the participant's fixed weekly call slot. */

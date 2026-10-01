@@ -52,6 +52,7 @@ describe.skipIf(!url)('row level security', () => {
     await db.query(readFileSync(join(root, 'supabase/migrations/0001_schema.sql'), 'utf8'))
     await db.query(readFileSync(join(root, 'supabase/migrations/0002_deals.sql'), 'utf8'))
     await db.query(readFileSync(join(root, 'supabase/migrations/0003_call_slots.sql'), 'utf8'))
+    await db.query(readFileSync(join(root, 'supabase/migrations/0004_goal_record.sql'), 'utf8'))
     await db.query(`
       insert into auth.users (id, phone) values
         ('${U.admin}', '972500000001'), ('${U.coach1}', '972500000002'), ('${U.coach2}', '972500000003'),
@@ -127,7 +128,9 @@ describe.skipIf(!url)('row level security', () => {
       expect(await as('p1', `update participants set price = 1 where id = $1 returning id`, [P.p1])).toEqual([])
       await expect(
         as('p1', `insert into goals (participant_id, goal_type, goal_text) values ($1, 'other', 'x')`, [P.p1]),
-      ).rejects.toThrow(/row-level security/)
+      ).rejects.toThrow(/permission denied/)
+      await expect(as('p1', `select save_goal($1, '{"goal_text":"x"}')`, [P.p1])).rejects.toThrow(/not allowed/)
+      await expect(as('p1', `select confirm_goal($1, '1.2.3.4')`, [P.p1])).rejects.toThrow(/permission denied/)
     })
 
     it('marks only their own milestone as seen', async () => {
@@ -190,11 +193,13 @@ describe.skipIf(!url)('row level security', () => {
   describe('nutritionist', () => {
     it('sees assigned participants and sets their goal', async () => {
       expect(await as('nutri', 'select id from participants')).toEqual([{ id: P.p1 }])
-      const ok = await as('nutri', `insert into goals (participant_id, goal_type, goal_text, goal_value) values ($1, 'weight', 'ל-70', 70) returning id`, [P.p1])
-      expect(ok).toHaveLength(1)
+      const ok = await as('nutri', `select save_goal($1, '{"goal_type":"weight","goal_text":"ל-70","goal_value":"70"}') as id`, [P.p1])
+      expect(ok[0].id).toBeTruthy()
+      await expect(as('nutri', `select save_goal($1, '{"goal_text":"x"}')`, [P.p2])).rejects.toThrow(/not allowed/)
+      await expect(as('coach1', `select save_goal($1, '{"goal_text":"x"}')`, [P.p1])).rejects.toThrow(/not allowed/)
       await expect(
-        as('nutri', `insert into goals (participant_id, goal_type, goal_text) values ($1, 'other', 'x')`, [P.p2]),
-      ).rejects.toThrow(/row-level security/)
+        as('nutri', `insert into goals (participant_id, goal_type, goal_text) values ($1, 'other', 'x')`, [P.p1]),
+      ).rejects.toThrow(/permission denied/)
     })
   })
 
@@ -211,6 +216,101 @@ describe.skipIf(!url)('row level security', () => {
       )
       expect(row.n).toBe(1)
       expect(await as('admin', `update participants set price = 2000 where id = $1 returning id`, [P.p2])).toHaveLength(1)
+    })
+  })
+
+  describe('goal record', () => {
+    /** Several statements in one transaction that is rolled back. */
+    async function tx(fn: (q: (role: keyof typeof U | 'service', sql: string, params?: unknown[]) => Promise<any[]>) => Promise<void>) {
+      await db.query('begin')
+      try {
+        await fn(async (role, sql, params = []) => {
+          await db.query('reset role')
+          if (role === 'service') await db.query('set local role service_role')
+          else {
+            await db.query(`select set_config('request.jwt.claim.sub', $1, true)`, [U[role]])
+            await db.query('set local role authenticated')
+          }
+          return (await db.query(sql, params)).rows
+        })
+      } finally {
+        await db.query('rollback')
+      }
+    }
+    const goals = `select goal_text, source, recorded_by, confirmed_at is not null as confirmed, superseded_by is null as current
+                   from goals where participant_id = $1 order by recorded_at, current`
+
+    it('edits an unconfirmed goal in place, recording who and when', async () => {
+      await tx(async (q) => {
+        await q('nutri', `select save_goal($1, '{"goal_text":"ל-70"}')`, [P.p1])
+        await q('nutri', `select save_goal($1, '{"goal_text":"ל-69"}')`, [P.p1])
+        expect(await q('service', goals, [P.p1])).toEqual([
+          { goal_text: 'ל-69', source: 'platform', recorded_by: S.nutri, confirmed: false, current: true },
+        ])
+      })
+    })
+
+    it('a change after confirmation is a new row; the old one points to it', async () => {
+      await tx(async (q) => {
+        await q('nutri', `select save_goal($1, '{"goal_text":"ל-70","start_weight":"80"}')`, [P.p1])
+        expect(await q('service', `select confirm_goal($1, '5.6.7.8') as id`, [P.p1])).toHaveLength(1)
+        // achieved alone is an outcome, not a new goal
+        await q('nutri', `select save_goal($1, '{"goal_text":"ל-70","start_weight":"80","achieved":"true"}')`, [P.p1])
+        expect(await q('service', `select count(*)::int as n from goals where participant_id = $1`, [P.p1])).toEqual([{ n: 1 }])
+        await q('nutri', `select save_goal($1, '{"goal_text":"ל-68","start_weight":"80"}')`, [P.p1])
+        const rows = await q('service', goals, [P.p1])
+        expect(rows.map((r) => [r.goal_text, r.confirmed, r.current])).toEqual([['ל-70', true, false], ['ל-68', false, true]])
+        const [old] = await q('service', `select g.confirmation_ip, n.goal_text as next from goals g join goals n on n.id = g.superseded_by where g.participant_id = $1`, [P.p1])
+        expect(old).toEqual({ confirmation_ip: '5.6.7.8', next: 'ל-68' })
+        // the participant sees only through RLS, and only their own
+        expect(await q('p1', `select count(*)::int as n from goals`)).toEqual([{ n: 2 }])
+        expect(await q('p2', `select count(*)::int as n from goals`)).toEqual([{ n: 0 }])
+      })
+    })
+
+    it('the record cannot be rewritten, even by the service role', async () => {
+      await tx(async (q) => {
+        await q('nutri', `select save_goal($1, '{"goal_text":"ל-70"}')`, [P.p1])
+        await q('service', `select confirm_goal($1, '1.1.1.1')`, [P.p1])
+        for (const sql of [
+          `update goals set goal_text = 'אחר' where participant_id = $1`,
+          `update goals set recorded_at = now() - interval '1 day' where participant_id = $1`,
+          `update goals set source = 'goal_form' where participant_id = $1`,
+          `update goals set confirmed_at = now() + interval '1 hour' where participant_id = $1`,
+          `update goals set confirmation_ip = '9.9.9.9' where participant_id = $1`,
+          `delete from goals where participant_id = $1`,
+        ]) {
+          await db.query('savepoint s')
+          await expect(q('service', sql, [P.p1]), sql).rejects.toThrow(/never changes|written once|not edited|cannot be deleted/)
+          await db.query('rollback to savepoint s')
+        }
+      })
+    })
+
+    it('the signing form: confirmed on arrival, idempotent by external_ref, supersedes', async () => {
+      await tx(async (q) => {
+        await q('nutri', `select save_goal($1, '{"goal_text":"טיוטה"}')`, [P.p1])
+        const call = `select write_goal($1, '{"goal_type":"weight","goal_text":"ל-70","goal_why":"בריאות"}', 'goal_form', null,
+                        '2026-10-01T09:00:00Z', '2026-10-01T09:00:00Z', 'https://x/a.pdf', '972500000011|2026-10-01T09:00:00.000Z') as id`
+        const [a] = await q('service', call, [P.p1])
+        const [b] = await q('service', call, [P.p1])
+        expect(b.id).toBe(a.id)
+        const rows = await q('service', goals, [P.p1])
+        expect(rows.map((r) => [r.goal_text, r.source, r.confirmed, r.current])).toEqual([
+          ['טיוטה', 'platform', false, false],
+          ['ל-70', 'goal_form', true, true],
+        ])
+        await expect(q('nutri', `select write_goal($1, '{"goal_text":"x"}', 'goal_form', null, now())`, [P.p1])).rejects.toThrow(/permission denied/)
+      })
+    })
+
+    it('the intake log is admin-read, service-write', async () => {
+      await tx(async (q) => {
+        await q('service', `insert into goal_intake_log (status, outcome) values (401, 'bad_secret')`)
+        expect(await q('admin', `select outcome from goal_intake_log`)).toEqual([{ outcome: 'bad_secret' }])
+        expect(await q('nutri', `select outcome from goal_intake_log`)).toEqual([])
+        await expect(q('admin', `insert into goal_intake_log (status, outcome) values (200, 'x')`)).rejects.toThrow(/permission denied/)
+      })
     })
   })
 

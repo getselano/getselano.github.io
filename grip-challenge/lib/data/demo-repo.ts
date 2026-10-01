@@ -2,9 +2,9 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { addDays, todayIL } from '../dates'
 import { PRICE_DEFAULT, PROGRAM_DAYS } from '../program'
-import type { Participant, ParticipantBundle, Staff } from '../types'
+import type { Goal, Participant, ParticipantBundle, Staff } from '../types'
 import { seedDemo, type DemoStore } from './demo-seed'
-import type { ServiceRepo, SignupInput, UserRepo, Viewer } from './repo'
+import type { GoalIntake, GoalIntakeLog, ServiceRepo, SignupInput, UserRepo, Viewer } from './repo'
 
 export const DEMO_COOKIE = 'grip_demo_as'
 
@@ -22,7 +22,7 @@ const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(seq++
 function bundleOf(s: DemoStore, p: Participant, withCalls: boolean): ParticipantBundle {
   return {
     participant: p,
-    goal: s.goals.find((x) => x.participant_id === p.id) ?? null,
+    goal: currentOf(s, p.id),
     logs: s.logs.filter((l) => l.participant_id === p.id).sort((a, b) => (a.log_date < b.log_date ? -1 : 1)),
     // Participants see their call dates only, like my_call_dates() in the migration.
     calls: s.calls
@@ -30,6 +30,48 @@ function bundleOf(s: DemoStore, p: Participant, withCalls: boolean): Participant
       .map((c) => (withCalls ? c : { ...c, staff_id: '', summary: null, risk_flag: false })),
     milestones: s.milestones.filter((m) => m.participant_id === p.id),
   }
+}
+
+const currentOf = (s: DemoStore, pid: string) => s.goals.find((x) => x.participant_id === pid && !x.superseded_by) ?? null
+
+const SUBSTANCE = ['goal_type', 'goal_text', 'goal_value', 'goal_why', 'start_weight', 'start_body_fat', 'start_measurements'] as const
+
+/** write_goal() from migration 0004, in memory. */
+function writeGoal(s: DemoStore, g: Goal, record: Pick<Goal, 'source' | 'recorded_by' | 'recorded_at' | 'confirmed_at' | 'external_pdf_url'> & { ref?: string }): string {
+  const ext = s.goals as (Goal & { external_ref?: string })[]
+  if (record.ref) {
+    const prior = ext.find((x) => x.external_ref === record.ref)
+    if (prior) return prior.id!
+  }
+  const cur = currentOf(s, g.participant_id)
+  const fields = { goal_type: g.goal_type, goal_text: g.goal_text, goal_value: g.goal_value ?? null, goal_why: g.goal_why ?? null, start_weight: g.start_weight ?? null, start_body_fat: g.start_body_fat ?? null, start_measurements: g.start_measurements ?? null, achieved: g.achieved ?? null }
+  if (cur && record.source === 'platform') {
+    if (!cur.confirmed_at) {
+      Object.assign(cur, fields, { set_at: g.set_at ?? cur.set_at })
+      return cur.id!
+    }
+    if (SUBSTANCE.every((k) => (cur[k] ?? null) === (fields[k] ?? null))) {
+      cur.achieved = fields.achieved
+      return cur.id!
+    }
+  }
+  const id = newId('goal')
+  if (cur) cur.superseded_by = id
+  ext.push({
+    ...fields,
+    id,
+    participant_id: g.participant_id,
+    set_at: g.set_at ?? record.recorded_at!.slice(0, 10),
+    recorded_at: record.recorded_at,
+    recorded_by: record.recorded_by,
+    source: record.source,
+    confirmed_at: record.confirmed_at,
+    confirmation_ip: null,
+    external_pdf_url: record.external_pdf_url ?? null,
+    superseded_by: null,
+    external_ref: record.ref,
+  })
+  return id
 }
 
 /** Mirrors the RLS rules in the migration. */
@@ -84,6 +126,19 @@ export class DemoUserRepo implements UserRepo {
     const staffView = (await this.viewer())?.role !== 'participant'
     for (const p of s.participants) if (await this.canSee(p)) out.push(bundleOf(s, p, staffView))
     return out.sort((a, b) => (a.participant.start_date < b.participant.start_date ? 1 : -1))
+  }
+
+  async currentGoal(participantId: string) {
+    const s = store()
+    const p = s.participants.find((x) => x.id === participantId)
+    return p && (await this.canSee(p)) ? currentOf(s, participantId) : null
+  }
+
+  async goalHistory(participantId: string) {
+    const s = store()
+    const p = s.participants.find((x) => x.id === participantId)
+    if (!p || !(await this.canSee(p))) return []
+    return s.goals.filter((g) => g.participant_id === participantId).sort((a, b) => ((a.recorded_at ?? '') < (b.recorded_at ?? '') ? 1 : -1))
   }
 
   async staff() {
@@ -146,10 +201,11 @@ export class DemoUserRepo implements UserRepo {
   }
 
   async saveGoal(goal: Parameters<UserRepo['saveGoal']>[0]) {
-    await this.requireStaffFor(goal.participant_id)
-    const s = store()
-    s.goals = s.goals.filter((x) => x.participant_id !== goal.participant_id)
-    s.goals.push(goal)
+    // save_goal(): the assigned nutritionist, or an admin.
+    const v = await this.viewer()
+    const p = store().participants.find((x) => x.id === goal.participant_id)
+    if (!v || !p || !(v.role === 'admin' || (v.role === 'nutritionist' && p.nutritionist_id === v.staff.id))) throw new Error('not allowed')
+    writeGoal(store(), goal, { source: 'platform', recorded_by: v.staff.id, recorded_at: new Date().toISOString(), confirmed_at: null })
   }
 
   async saveParticipant(input: Parameters<UserRepo['saveParticipant']>[0], id?: string) {
@@ -291,5 +347,36 @@ export class DemoServiceRepo implements ServiceRepo {
   async finishNotification(kind: string, recipient: string, day: string, status: string, detail?: string) {
     const n = store().notifications.find((x) => x.kind === kind && x.recipient === recipient && x.sent_on === day)
     if (n) Object.assign(n, { status, detail })
+  }
+
+  async confirmGoal(participantId: string, ip: string | null) {
+    const g = currentOf(store(), participantId)
+    if (!g || g.confirmed_at) return false
+    Object.assign(g, { confirmed_at: new Date().toISOString(), confirmation_ip: ip })
+    return true
+  }
+
+  async intakeGoal(input: GoalIntake) {
+    const s = store()
+    const ref = `${input.phone}|${input.signed_at}`
+    const prior = (s.goals as (Goal & { external_ref?: string })[]).find((g) => g.external_ref === ref)
+    if (prior) return { participantId: prior.participant_id, goalId: prior.id!, duplicate: true, createdParticipant: false }
+    let p = s.participants.find((x) => x.phone === input.phone)
+    const createdParticipant = !p
+    if (!p) {
+      const start = input.start_date || todayIL()
+      p = { id: newId('p'), full_name: input.full_name, phone: input.phone, email: input.email, start_date: start, end_date: addDays(start, PROGRAM_DAYS - 1), price: PRICE_DEFAULT, coach_id: null, nutritionist_id: null, status: 'active', marketing_consent: false, created_at: new Date().toISOString() }
+      s.participants.push(p)
+    }
+    const goalId = writeGoal(
+      s,
+      { ...input.goal, participant_id: p.id, goal_value: null, set_at: null, achieved: null },
+      { source: 'goal_form', recorded_by: null, recorded_at: input.signed_at, confirmed_at: input.signed_at, external_pdf_url: input.pdf_url, ref },
+    )
+    return { participantId: p.id, goalId, duplicate: false, createdParticipant }
+  }
+
+  async logGoalIntake(e: GoalIntakeLog) {
+    store().goalIntakeLog.push({ ...e, received_at: new Date().toISOString() })
   }
 }

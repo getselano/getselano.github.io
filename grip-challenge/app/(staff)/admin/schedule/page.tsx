@@ -18,7 +18,7 @@ export default async function ScheduleAdmin() {
           <p className="hello">אופציונלי. רק אם יש אימונים קבועים. כשהלו״ז ריק (המתאמנים קובעים בבוסטאפ), הכרטיס &quot;הגעתי לאימון&quot; מופיע כל יום כרשות</p>
           <h1>לו״ז אימונים</h1>
         </div>
-        <span className="pill">{attendanceIsSelfReported() ? 'נוכחות: דיווח ידני + אישור מאמן/ת' : 'נוכחות: בוסטאפ'}</span>
+        <span className="pill">{attendanceIsSelfReported() ? 'נוכחות: דיווח ידני של המשתתף' : 'נוכחות: בוסטאפ'}</span>
       </header>
       <div className="split">
         <section className="card" style={{ padding: 8 }}>

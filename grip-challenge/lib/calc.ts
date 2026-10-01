@@ -193,7 +193,7 @@ export function statusOf(input: {
     reasons.push({ code: 'no_log', color: 'yellow', text: 'יומיים בלי דיווח תזונה', owner: 'nutritionist' })
   }
   if (sinceCall >= 7) {
-    reasons.push({ code: 'missed_call', color: 'red', text: `אין שיחת מאמן/ת ${sinceCall} ימים`, owner: 'coach' })
+    reasons.push({ code: 'missed_call', color: 'red', text: `אין שיחת מאמן/ת מנטלי/ת ${sinceCall} ימים`, owner: 'coach' })
   }
   if (actual <= expected - 2) {
     reasons.push({
