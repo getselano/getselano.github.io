@@ -46,6 +46,16 @@ describe('messages', () => {
     expect(tal).toContain('https://x/team/1')
     expect(staffNewParticipant('coach', 'לואיזה', p, 'l').text).toContain('שיחת היכרות קצרה')
   })
+  it('gives the nutritionist the personal goal-appendix link when the form is configured', () => {
+    const p = { full_name: 'רונית לוי', phone: '972501234567', start_date: '2026-10-04', price: 2500 }
+    const tal = staffNewParticipant('nutritionist', 'טל', p, 'https://x/team/1', 'https://form/exec?page=goal').text
+    expect(tal).toContain('בסוף השיחה שלח/י לרונית את הקישור האישי לחתימה על נספח היעד')
+    expect(tal).toContain('https://form/exec?page=goal')
+    expect(tal).toContain('https://x/team/1')
+    expect(tal).not.toContain('להזין אותו באפליקציה')
+    // the coach's message never carries it
+    expect(staffNewParticipant('coach', 'לואיזה', p, 'l', 'https://form').text).not.toContain('https://form')
+  })
   it('tells admins who joined and whether they were assigned', () => {
     const p = { full_name: 'רונית לוי', phone: '972501234567', start_date: '2026-10-04', price: 2500 }
     expect(adminNewParticipant('אביב', p, { nutritionist: 'טל', coach: 'לואיזה' }, 'l').text).toContain('שובץ/ה ל: טל (תזונה), לואיזה')
