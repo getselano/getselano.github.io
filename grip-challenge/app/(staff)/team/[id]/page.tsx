@@ -9,6 +9,7 @@ import { WeightChart } from '@/components/WeightChart'
 import { attendanceIsSelfReported } from '@/lib/attendance'
 import { loadParticipant, requireRole, userRepo } from '@/lib/data'
 import { dateTimeIL, HEB_WEEKDAYS, HEB_WEEKDAYS_SHORT, shortDate, todayIL, weekday } from '@/lib/dates'
+import { goalFormInvite, goalFormLink } from '@/lib/goal-form'
 import { displayPhone, whatsappLink } from '@/lib/phone'
 import { REWARD_DAYS, STATUS_COLORS } from '@/lib/program'
 import { confirmWorkoutAction, logCallAction, saveGoalAction, setCallSlotAction } from '../../actions'
@@ -35,6 +36,8 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
   const slotTime = p.call_time?.slice(0, 5) ?? ''
   const g = bundle.goal
   const previous = history.filter((x) => x.superseded_by)
+  // The signed appendix is the main way in; offered until a signed one is on file.
+  const signLink = canEditGoal && g?.source !== 'goal_form' ? goalFormLink(process.env.GOAL_FORM_URL, p) : null
   const first = p.full_name.split(' ')[0]
 
   return (
@@ -199,6 +202,17 @@ export default async function ParticipantDetail({ params }: { params: Promise<{ 
                   <div style={{ color: 'var(--streak-deep)' }}>ממתין לאישור המשתתף. יוצג לו בכניסה הבאה לאפליקציה.</div>
                 )}
                 {g.external_pdf_url && <a className="link" href={g.external_pdf_url} target="_blank" rel="noreferrer">נספח היעד החתום (PDF)</a>}
+              </div>
+            )}
+            {signLink && (
+              <div className="goal-sign">
+                <strong>נספח היעד לחתימה</strong>
+                <p className="hint">בסוף שיחת הקליטה שולחים ל{first} את הקישור האישי. אחרי החתימה היעד נכנס לכאן לבד, מאושר ועם ה-PDF.</p>
+                <div className="row" style={{ flexWrap: 'wrap' }}>
+                  <a className="btn accent small" href={whatsappLink(p.phone, goalFormInvite(first, signLink))} target="_blank" rel="noreferrer"><Message size={18} /> שליחה ל{first} בוואטסאפ</a>
+                  <a className="btn light small" href={signLink} target="_blank" rel="noreferrer">פתיחת הטופס</a>
+                </div>
+                <p className="hint">אם אי אפשר להחתים, אפשר להזין כאן למטה. {first} יתבקש/תתבקש לאשר באפליקציה.</p>
               </div>
             )}
             {canEditGoal ? (

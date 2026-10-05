@@ -100,18 +100,28 @@ export interface NewParticipantInfo {
 }
 
 /** To the nutritionist or mental coach the new participant was assigned to. */
-export function staffNewParticipant(role: 'nutritionist' | 'coach', staffName: string, p: NewParticipantInfo, link: string): Message {
+export function staffNewParticipant(
+  role: 'nutritionist' | 'coach',
+  staffName: string,
+  p: NewParticipantInfo,
+  link: string,
+  goalLink: string | null = null,
+): Message {
+  const first = p.full_name.split(' ')[0]
   const next =
-    role === 'nutritionist'
-      ? 'הצעד שלך: לתאם שיחת קליטה בזום, לקבוע יחד את היעד ולהזין אותו באפליקציה:'
-      : 'הצעד שלך: שיחת היכרות קצרה השבוע, לפני שהאתגר יוצא לדרך. כל המעקב כאן:'
-  const text = [
-    `היי ${staffName.split(' ')[0]}, הצטרפות חדשה לאתגר: ${p.full_name} (${localPhone(p.phone)})`,
-    `תחילת האתגר: ${dmy(p.start_date)}`,
-    '',
-    next,
-    link,
-  ].join('\n')
+    role === 'coach'
+      ? ['הצעד שלך: שיחת היכרות קצרה השבוע, לפני שהאתגר יוצא לדרך. כל המעקב כאן:', link]
+      : goalLink
+        ? [
+            'הצעד שלך: לתאם שיחת קליטה בזום.',
+            `בסוף השיחה שלח/י ל${first} את הקישור האישי לחתימה על נספח היעד. השם והטלפון כבר ממולאים, והיעד נכנס לאפליקציה לבד אחרי החתימה:`,
+            goalLink,
+            '',
+            'הכרטיס באפליקציה:',
+            link,
+          ]
+        : ['הצעד שלך: לתאם שיחת קליטה בזום, לקבוע יחד את היעד ולהזין אותו באפליקציה:', link]
+  const text = [`היי ${staffName.split(' ')[0]}, הצטרפות חדשה לאתגר: ${p.full_name} (${localPhone(p.phone)})`, `תחילת האתגר: ${dmy(p.start_date)}`, '', ...next].join('\n')
   return { template: 'staff_new', params: [staffName, p.full_name, dmy(p.start_date), link], text }
 }
 

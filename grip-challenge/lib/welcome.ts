@@ -1,6 +1,7 @@
 import 'server-only'
 import { serviceRepo } from './data'
 import { todayIL } from './dates'
+import { goalFormLink } from './goal-form'
 import { adminNewParticipant, staffNewParticipant, welcomeMessage, type Message } from './messages'
 import type { Staff } from './types'
 import { sendWhatsApp } from './whatsapp'
@@ -52,7 +53,7 @@ export async function onNewParticipant(p: NewParticipant, appUrl: string, opts: 
   const staffOwner = staffList.find((x) => x.phone === p.phone)
   if (!staffOwner) await send('welcome', `${p.id}:${p.phone}`, p.phone, welcomeMessage(p, appUrl, todayIL()))
   if (assigned.nutritionist)
-    await send('staff_new', `${assigned.nutritionist.id}:${p.id}`, assigned.nutritionist.phone, staffNewParticipant('nutritionist', assigned.nutritionist.full_name, p, card))
+    await send('staff_new', `${assigned.nutritionist.id}:${p.id}`, assigned.nutritionist.phone, staffNewParticipant('nutritionist', assigned.nutritionist.full_name, p, card, goalFormLink(process.env.GOAL_FORM_URL, p)))
   if (assigned.coach)
     await send('staff_new', `${assigned.coach.id}:${p.id}`, assigned.coach.phone, staffNewParticipant('coach', assigned.coach.full_name, p, card))
   if (opts.notifyAdmins) {
@@ -105,7 +106,7 @@ export async function briefAssignedStaff(p: NewParticipant, staff: { coach: Staf
     if (!who) continue
     try {
       if (!(await repo.claimNotification('staff_new', `${who.id}:${p.id}`, p.start_date))) continue
-      const r = await sendWhatsApp(who.phone, staffNewParticipant(role, who.full_name, p, card).text)
+      const r = await sendWhatsApp(who.phone, staffNewParticipant(role, who.full_name, p, card, role === 'nutritionist' ? goalFormLink(process.env.GOAL_FORM_URL, p) : null).text)
       await repo.finishNotification('staff_new', `${who.id}:${p.id}`, p.start_date, r.status, r.detail)
     } catch (e) {
       console.error('staff brief failed', e)
